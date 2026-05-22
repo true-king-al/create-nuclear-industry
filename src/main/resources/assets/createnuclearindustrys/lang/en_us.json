@@ -5,7 +5,7 @@
   "block.createnuclearindustrys.boron_control_rod": "Boron Control Rod",
   "block.createnuclearindustrys.heat_gauge": "Heat Gauge",
   "item.createnuclearindustrys.example_item": "Example Item",
-  "item.createnuclearindustrys.copper_heat_pipe": "Copper Heat Pipe",
+  "block.createnuclearindustrys.heat_pipe": "Heat Pipe",
 
   "createnuclearindustrys.configuration.title": "Create Nuclear Industrys Configs",
   "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml": "Create Nuclear Industrys Configs",

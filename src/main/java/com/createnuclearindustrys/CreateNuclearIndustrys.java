@@ -61,8 +61,9 @@ public class CreateNuclearIndustrys {
     public static final DeferredItem<Item> EXAMPLE_ITEM = ITEMS.registerSimpleItem("example_item", new Item.Properties().food(new FoodProperties.Builder()
             .alwaysEdible().nutrition(1).saturationModifier(2f).build()));
 
-    public static final DeferredItem<CopperHeatPipeItem> COPPER_HEAT_PIPE =
-            ITEMS.registerItem("copper_heat_pipe", CopperHeatPipeItem::new, new Item.Properties().stacksTo(16));
+    public static final DeferredBlock<HeatPipeBlock> HEAT_PIPE = BLOCKS.registerBlock("heat_pipe",
+            HeatPipeBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_ORANGE).strength(1.5f, 6.0f).requiresCorrectToolForDrops());
+    public static final DeferredItem<BlockItem> HEAT_PIPE_ITEM = ITEMS.registerSimpleBlockItem("heat_pipe", HEAT_PIPE);
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.createnuclearindustrys")) //The language key for the title of your CreativeModeTab
@@ -73,7 +74,7 @@ public class CreateNuclearIndustrys {
                 output.accept(URANIUM_FUEL_ROD_ITEM.get());
                 output.accept(BORON_CONTROL_ROD_ITEM.get());
                 output.accept(HEAT_GAUGE_ITEM.get());
-                output.accept(COPPER_HEAT_PIPE.get());
+                output.accept(HEAT_PIPE_ITEM.get());
             }).build());
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.

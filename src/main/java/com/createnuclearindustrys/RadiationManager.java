@@ -1,10 +1,10 @@
 package com.createnuclearindustrys;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.LongArrayTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -15,7 +15,6 @@ import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.*;
 
@@ -27,7 +26,6 @@ public class RadiationManager extends SavedData {
     private final Map<UUID, RadiationParticle> particles = new LinkedHashMap<>();
     private final Set<BlockPos> rods = new HashSet<>();
     private final Map<BlockPos, Float> rodHeat = new HashMap<>();
-    private final Map<BlockPos, Set<BlockPos>> pipeConnections = new HashMap<>();
     private final RandomSource rng = RandomSource.create();
     private final List<RadiationParticle> pendingBroadcast = new ArrayList<>();
 
@@ -47,49 +45,7 @@ public class RadiationManager extends SavedData {
     public void removeRod(BlockPos pos, ServerLevel level) {
         rods.remove(pos);
         rodHeat.remove(pos);
-        // Clean up all pipe connections involving this rod
-        Set<BlockPos> peers = pipeConnections.remove(pos);
-        if (peers != null) {
-            for (BlockPos peer : peers) {
-                Set<BlockPos> peerSet = pipeConnections.get(peer);
-                if (peerSet != null) {
-                    peerSet.remove(pos);
-                    if (peerSet.isEmpty()) pipeConnections.remove(peer);
-                }
-                PacketDistributor.sendToPlayersInDimension(level,
-                    new HeatPipeConnectionPacket(pos.asLong(), peer.asLong(), false));
-            }
-        }
         setDirty();
-    }
-
-    public boolean hasPipeConnection(BlockPos a, BlockPos b) {
-        Set<BlockPos> peers = pipeConnections.get(a);
-        return peers != null && peers.contains(b);
-    }
-
-    public void addPipeConnection(BlockPos a, BlockPos b, ServerLevel level) {
-        pipeConnections.computeIfAbsent(a.immutable(), k -> new HashSet<>()).add(b.immutable());
-        pipeConnections.computeIfAbsent(b.immutable(), k -> new HashSet<>()).add(a.immutable());
-        PacketDistributor.sendToPlayersInDimension(level,
-            new HeatPipeConnectionPacket(a.asLong(), b.asLong(), true));
-        setDirty();
-    }
-
-    public int removeAllPipeConnections(BlockPos pos, ServerLevel level) {
-        Set<BlockPos> peers = pipeConnections.remove(pos);
-        if (peers == null) return 0;
-        for (BlockPos peer : peers) {
-            Set<BlockPos> peerSet = pipeConnections.get(peer);
-            if (peerSet != null) {
-                peerSet.remove(pos);
-                if (peerSet.isEmpty()) pipeConnections.remove(peer);
-            }
-            PacketDistributor.sendToPlayersInDimension(level,
-                new HeatPipeConnectionPacket(pos.asLong(), peer.asLong(), false));
-        }
-        setDirty();
-        return peers.size();
     }
 
     public void addHeat(BlockPos pos, float amount) {
@@ -114,18 +70,15 @@ public class RadiationManager extends SavedData {
     }
 
     public void tick(ServerLevel level) {
-        // Validate registered rods still exist (handles pistons, explosions, commands)
+        // Validate registered nodes still exist (handles pistons, explosions, commands)
         List<BlockPos> gone = new ArrayList<>();
-        for (BlockPos rod : rods) {
-            if (level.isLoaded(rod)) {
-                Block b = level.getBlockState(rod).getBlock();
-                if (!(b instanceof UraniumFuelRod) && !(b instanceof HeatGaugeBlock))
-                    gone.add(rod);
-            }
+        for (BlockPos pos : rods) {
+            if (level.isLoaded(pos) && !isHeatNode(level.getBlockState(pos).getBlock()))
+                gone.add(pos);
         }
-        for (BlockPos rod : gone) removeRod(rod, level);
+        for (BlockPos pos : gone) removeRod(pos, level);
 
-        // Dissipate heat; melt uranium rods that hit 1000°C (gauges just cap)
+        // Dissipate heat; uranium rods melt at 1000°C, everything else just caps
         List<BlockPos> melted = new ArrayList<>();
         for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
             float heat = entry.getValue();
@@ -145,7 +98,7 @@ public class RadiationManager extends SavedData {
         }
         if (!melted.isEmpty()) setDirty();
 
-        // Vertical heat conduction: stacked fuel rods share heat with each other
+        // Vertical conduction between stacked uranium rods
         for (BlockPos pos : new ArrayList<>(rods)) {
             BlockPos above = pos.above();
             if (!rods.contains(above)) continue;
@@ -157,25 +110,26 @@ public class RadiationManager extends SavedData {
             rodHeat.put(above.immutable(), heatAbove + transfer);
         }
 
-        // Pipe heat conduction: connected rods equalize heat
-        Set<String> processed = new HashSet<>();
-        for (Map.Entry<BlockPos, Set<BlockPos>> entry : new ArrayList<>(pipeConnections.entrySet())) {
-            BlockPos posA = entry.getKey();
-            for (BlockPos posB : entry.getValue()) {
-                String key = posA.asLong() < posB.asLong()
-                    ? posA.asLong() + ":" + posB.asLong()
-                    : posB.asLong() + ":" + posA.asLong();
-                if (!processed.add(key)) continue;
-                float heatA = rodHeat.getOrDefault(posA, 0f);
-                float heatB = rodHeat.getOrDefault(posB, 0f);
+        // Heat pipe block conduction: each pipe block equalizes with all 6 neighbors
+        Set<Long> pipeProcessed = new HashSet<>();
+        for (BlockPos pos : new ArrayList<>(rods)) {
+            if (!(level.getBlockState(pos).getBlock() instanceof HeatPipeBlock)) continue;
+            for (Direction dir : Direction.values()) {
+                BlockPos neighbor = pos.relative(dir);
+                if (!rods.contains(neighbor)) continue;
+                long la = pos.asLong(), lb = neighbor.asLong();
+                long key = la < lb ? la * 31L + lb : lb * 31L + la;
+                if (!pipeProcessed.add(key)) continue;
+                float heatA = rodHeat.getOrDefault(pos, 0f);
+                float heatB = rodHeat.getOrDefault(neighbor, 0f);
                 float transfer = (heatA - heatB) * 0.05f;
                 if (Math.abs(transfer) < 0.01f) continue;
-                rodHeat.put(posA, heatA - transfer);
-                rodHeat.put(posB.immutable(), heatB + transfer);
+                rodHeat.put(pos, heatA - transfer);
+                rodHeat.put(neighbor.immutable(), heatB + transfer);
             }
         }
 
-        // Sync heat_level block state property to clients (drives light + tint)
+        // Sync heat_level block state to clients (drives light + tint)
         for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
             BlockPos pos = entry.getKey();
             int newLevel = Math.min(15, (int)(entry.getValue() / MELTDOWN_TEMP * 15));
@@ -186,7 +140,7 @@ public class RadiationManager extends SavedData {
             }
         }
 
-        // Emit one particle per uranium rod per trigger — smooth continuous stream
+        // Emit one particle per uranium rod per trigger
         for (BlockPos rod : new ArrayList<>(rods)) {
             if (!level.isLoaded(rod)) continue;
             if (!(level.getBlockState(rod).getBlock() instanceof UraniumFuelRod)) continue;
@@ -200,6 +154,10 @@ public class RadiationManager extends SavedData {
             step(p, level);
         }
         if (!dead.isEmpty()) { dead.forEach(particles::remove); setDirty(); }
+    }
+
+    private static boolean isHeatNode(Block b) {
+        return b instanceof UraniumFuelRod || b instanceof HeatGaugeBlock || b instanceof HeatPipeBlock;
     }
 
     private void emitFromRod(BlockPos pos) {
@@ -227,25 +185,21 @@ public class RadiationManager extends SavedData {
         Vec3 next = p.pos.add(p.vel);
         if (!level.isLoaded(BlockPos.containing(next))) return;
 
-        // Free movement while still inside emitting block
         if (BlockPos.containing(p.pos).equals(p.source)) { p.pos = next; return; }
 
         if (!isPointInSolid(level, next)) { p.pos = next; return; }
 
         BlockPos hitBlock = BlockPos.containing(next);
 
-        // Absorption: particle dies on contact based on block type
         if (rng.nextFloat() < getAbsorption(level.getBlockState(hitBlock))) {
             p.ticksLeft = 0;
             return;
         }
 
-        // Heat transfer: only from other rods, not the particle's own source
         if (rods.contains(hitBlock) && !hitBlock.equals(p.source)) {
             addHeat(hitBlock, p.energy * 5f);
         }
 
-        // Reflect per axis using point-in-solid test
         double vx = p.vel.x, vy = p.vel.y, vz = p.vel.z;
         if (isPointInSolid(level, new Vec3(p.pos.x + p.vel.x, p.pos.y,            p.pos.z           ))) vx = -vx;
         if (isPointInSolid(level, new Vec3(p.pos.x,            p.pos.y + p.vel.y, p.pos.z           ))) vy = -vy;
@@ -292,12 +246,6 @@ public class RadiationManager extends SavedData {
         CompoundTag heatTag = new CompoundTag();
         rodHeat.forEach((pos, heat) -> heatTag.putFloat(String.valueOf(pos.asLong()), heat));
         tag.put("rodHeat", heatTag);
-        CompoundTag pipesTag = new CompoundTag();
-        pipeConnections.forEach((pos, peers) -> {
-            long[] arr = peers.stream().mapToLong(BlockPos::asLong).toArray();
-            pipesTag.put(String.valueOf(pos.asLong()), new LongArrayTag(arr));
-        });
-        tag.put("pipeConnections", pipesTag);
         return tag;
     }
 
@@ -312,13 +260,6 @@ public class RadiationManager extends SavedData {
         CompoundTag heatTag = tag.getCompound("rodHeat");
         for (String key : heatTag.getAllKeys()) {
             m.rodHeat.put(BlockPos.of(Long.parseLong(key)), heatTag.getFloat(key));
-        }
-        CompoundTag pipesTag = tag.getCompound("pipeConnections");
-        for (String key : pipesTag.getAllKeys()) {
-            BlockPos pos = BlockPos.of(Long.parseLong(key));
-            Set<BlockPos> peers = new HashSet<>();
-            for (long l : pipesTag.getLongArray(key)) peers.add(BlockPos.of(l));
-            m.pipeConnections.put(pos, peers);
         }
         return m;
     }

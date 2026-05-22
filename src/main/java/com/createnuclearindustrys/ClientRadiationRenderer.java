@@ -53,31 +53,11 @@ public class ClientRadiationRenderer {
             RadiationBirthPacket.STREAM_CODEC,
             (pkt, ctx) -> ctx.enqueueWork(() -> handleBirth(pkt))
         );
-        event.registrar("1").playToClient(
-            HeatPipeConnectionPacket.TYPE,
-            HeatPipeConnectionPacket.STREAM_CODEC,
-            (pkt, ctx) -> ctx.enqueueWork(() -> handlePipeConnection(pkt))
-        );
     }
 
     public static void handleBirth(RadiationBirthPacket pkt) {
         particles.put(pkt.id(), new ClientParticle(pkt));
     }
-
-    public static void handlePipeConnection(HeatPipeConnectionPacket pkt) {
-        if (pkt.connected()) {
-            boolean exists = connectedPairs.stream().anyMatch(p ->
-                (p[0] == pkt.posA() && p[1] == pkt.posB()) ||
-                (p[0] == pkt.posB() && p[1] == pkt.posA()));
-            if (!exists) connectedPairs.add(new long[]{pkt.posA(), pkt.posB()});
-        } else {
-            connectedPairs.removeIf(p ->
-                (p[0] == pkt.posA() && p[1] == pkt.posB()) ||
-                (p[0] == pkt.posB() && p[1] == pkt.posA()));
-        }
-    }
-
-    private static final List<long[]> connectedPairs = new ArrayList<>();
 
     // ── Client tick: step physics ─────────────────────────────────────────────
 
@@ -132,56 +112,6 @@ public class ClientRadiationRenderer {
         }
 
         buf.endBatch(RenderType.lines());
-
-        // Render copper heat pipes as billboard quads (thick, minimal sag)
-        if (!connectedPairs.isEmpty()) {
-            VertexConsumer quads = buf.getBuffer(RenderType.debugQuads());
-            float halfThick = 0.04f;
-            for (long[] pair : connectedPairs) {
-                BlockPos posA = BlockPos.of(pair[0]);
-                BlockPos posB = BlockPos.of(pair[1]);
-                Vec3 a = Vec3.atCenterOf(posA).subtract(camPos);
-                Vec3 b = Vec3.atCenterOf(posB).subtract(camPos);
-                double dist = a.distanceTo(b);
-                double sag = dist * 0.04;
-                int segments = Math.max(8, (int)(dist * 4));
-                Vec3 prev = a;
-                for (int i = 1; i <= segments; i++) {
-                    double t = i / (double) segments;
-                    Vec3 cur = new Vec3(
-                        a.x + (b.x - a.x) * t,
-                        a.y + (b.y - a.y) * t - sag * 4 * t * (1 - t),
-                        a.z + (b.z - a.z) * t
-                    );
-                    Vec3 segDir = cur.subtract(prev);
-                    double sLen = segDir.length();
-                    if (sLen < 1e-9) { prev = cur; continue; }
-                    segDir = segDir.scale(1.0 / sLen);
-
-                    // Billboard: right = segDir × toCam (camera is at origin in camera-relative space)
-                    Vec3 mid = new Vec3((prev.x+cur.x)*0.5, (prev.y+cur.y)*0.5, (prev.z+cur.z)*0.5);
-                    double mLen = mid.length();
-                    Vec3 toCam = mLen < 1e-6 ? new Vec3(0, 1, 0) : mid.scale(-1.0 / mLen);
-                    Vec3 right = segDir.cross(toCam);
-                    double rLen = right.length();
-                    if (rLen < 1e-9) { prev = cur; continue; }
-                    right = right.scale(halfThick / rLen);
-
-                    float p1x = (float)(prev.x - right.x), p1y = (float)(prev.y - right.y), p1z = (float)(prev.z - right.z);
-                    float p2x = (float)(prev.x + right.x), p2y = (float)(prev.y + right.y), p2z = (float)(prev.z + right.z);
-                    float c1x = (float)(cur.x  - right.x), c1y = (float)(cur.y  - right.y), c1z = (float)(cur.z  - right.z);
-                    float c2x = (float)(cur.x  + right.x), c2y = (float)(cur.y  + right.y), c2z = (float)(cur.z  + right.z);
-
-                    quads.addVertex(mat, p1x, p1y, p1z).setColor(0.72f, 0.45f, 0.20f, 1f);
-                    quads.addVertex(mat, p2x, p2y, p2z).setColor(0.72f, 0.45f, 0.20f, 1f);
-                    quads.addVertex(mat, c2x, c2y, c2z).setColor(0.72f, 0.45f, 0.20f, 1f);
-                    quads.addVertex(mat, c1x, c1y, c1z).setColor(0.72f, 0.45f, 0.20f, 1f);
-
-                    prev = cur;
-                }
-            }
-            buf.endBatch(RenderType.debugQuads());
-        }
     }
 
     // ── Physics (mirrors server-side RadiationManager.step exactly) ──────────
