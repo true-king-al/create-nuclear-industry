@@ -82,7 +82,6 @@ public class CreateNuclearIndustrys {
             .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> URANIUM_FUEL_ROD_ITEM.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
-                output.accept(EXAMPLE_ITEM.get());
                 output.accept(URANIUM_FUEL_ROD_ITEM.get());
                 output.accept(BORON_CONTROL_ROD_ITEM.get());
                 output.accept(HEAT_GAUGE_ITEM.get());
