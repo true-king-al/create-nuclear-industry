@@ -1,0 +1,14 @@
+{
+  "parent": "minecraft:block/template_wall_post",
+  "gui_light": "front",
+  "textures": {
+    "wall": "createnuclearindustrys:block/boron_control_rod"
+  },
+  "display": {
+    "gui": {
+      "rotation": [30, 45, 0],
+      "translation": [0, 0, 0],
+      "scale": [0.625, 0.625, 0.625]
+    }
+  }
+}

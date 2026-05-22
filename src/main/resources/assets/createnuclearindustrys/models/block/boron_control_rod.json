@@ -1,0 +1,22 @@
+{
+  "ambientocclusion": false,
+  "render_type": "minecraft:cutout",
+  "textures": {
+    "particle": "#wall",
+    "wall": "createnuclearindustrys:block/boron_control_rod"
+  },
+  "elements": [
+    {
+      "from": [4, 0, 4],
+      "to": [12, 16, 12],
+      "faces": {
+        "down":  {"uv": [4, 4, 12, 12], "texture": "#wall", "cullface": "down"},
+        "up":    {"uv": [4, 4, 12, 12], "texture": "#wall", "cullface": "up"},
+        "north": {"uv": [4, 0, 12, 16], "texture": "#wall"},
+        "south": {"uv": [4, 0, 12, 16], "texture": "#wall"},
+        "west":  {"uv": [4, 0, 12, 16], "texture": "#wall"},
+        "east":  {"uv": [4, 0, 12, 16], "texture": "#wall"}
+      }
+    }
+  ]
+}
