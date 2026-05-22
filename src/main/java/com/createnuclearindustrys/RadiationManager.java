@@ -196,7 +196,8 @@ public class RadiationManager extends SavedData {
             return;
         }
 
-        if (rods.contains(hitBlock) && !hitBlock.equals(p.source)) {
+        if (rods.contains(hitBlock) && !hitBlock.equals(p.source)
+                && !(level.getBlockState(hitBlock).getBlock() instanceof HeatPipeBlock)) {
             addHeat(hitBlock, p.energy * 5f);
         }
 
@@ -211,7 +212,7 @@ public class RadiationManager extends SavedData {
     static float getAbsorption(BlockState state) {
         Block b = state.getBlock();
         if (b instanceof BoronControlRod) return 0.6f;
-        if (b == Blocks.IRON_BLOCK || b instanceof UraniumFuelRod) return 0f;
+        if (b == Blocks.IRON_BLOCK || b instanceof UraniumFuelRod || b instanceof HeatPipeBlock) return 0f;
         if (b == Blocks.GOLD_BLOCK || b == Blocks.DIAMOND_BLOCK || b == Blocks.NETHERITE_BLOCK) return 0.05f;
         if (b == Blocks.OBSIDIAN || b == Blocks.CRYING_OBSIDIAN) return 0.4f;
         if (b == Blocks.STONE || b == Blocks.COBBLESTONE || b == Blocks.DEEPSLATE

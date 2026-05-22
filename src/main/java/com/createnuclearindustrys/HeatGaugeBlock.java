@@ -21,17 +21,9 @@ public class HeatGaugeBlock extends Block {
         if (level.isClientSide()) return InteractionResult.SUCCESS;
 
         float heat = RadiationManager.get((ServerLevel) level).getHeat(pos);
-        int percent = (int)(heat / 1000f * 100);
-
-        String status;
-        if      (heat < 50)  status = "Stable";
-        else if (heat < 200) status = "Warm";
-        else if (heat < 500) status = "Hot";
-        else if (heat < 800) status = "Critical";
-        else                 status = "§cDANGER";
 
         player.sendSystemMessage(Component.literal(
-            String.format("[Heat Gauge] %.1f°C  (%d%% to meltdown) — %s", heat, percent, status)
+            String.format("[Heat Gauge] %.1f°C", heat)
         ));
 
         return InteractionResult.SUCCESS;
