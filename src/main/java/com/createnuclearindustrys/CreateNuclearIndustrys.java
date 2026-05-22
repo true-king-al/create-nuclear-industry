@@ -45,6 +45,10 @@ public class CreateNuclearIndustrys {
     public static final DeferredBlock<Block> EXAMPLE_BLOCK = BLOCKS.registerSimpleBlock("example_block", BlockBehaviour.Properties.of().mapColor(MapColor.STONE));
     public static final DeferredItem<BlockItem> EXAMPLE_BLOCK_ITEM = ITEMS.registerSimpleBlockItem("example_block", EXAMPLE_BLOCK);
 
+    public static final DeferredBlock<HeatGaugeBlock> HEAT_GAUGE = BLOCKS.registerBlock("heat_gauge",
+            HeatGaugeBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(2.0f, 6.0f).requiresCorrectToolForDrops());
+    public static final DeferredItem<BlockItem> HEAT_GAUGE_ITEM = ITEMS.registerSimpleBlockItem("heat_gauge", HEAT_GAUGE);
+
     public static final DeferredBlock<BoronControlRod> BORON_CONTROL_ROD = BLOCKS.registerBlock("boron_control_rod",
             BoronControlRod::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLUE).strength(2.0f, 6.0f).requiresCorrectToolForDrops().noOcclusion());
     public static final DeferredItem<BlockItem> BORON_CONTROL_ROD_ITEM = ITEMS.registerSimpleBlockItem("boron_control_rod", BORON_CONTROL_ROD);
@@ -68,6 +72,7 @@ public class CreateNuclearIndustrys {
                 output.accept(EXAMPLE_ITEM.get());
                 output.accept(URANIUM_FUEL_ROD_ITEM.get());
                 output.accept(BORON_CONTROL_ROD_ITEM.get());
+                output.accept(HEAT_GAUGE_ITEM.get());
                 output.accept(COPPER_HEAT_PIPE.get());
             }).build());
 

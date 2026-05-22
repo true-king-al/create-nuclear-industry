@@ -3,6 +3,7 @@
   "block.createnuclearindustrys.example_block": "Example Block",
   "block.createnuclearindustrys.uranium_fuel_rod": "Uranium Fuel Rod",
   "block.createnuclearindustrys.boron_control_rod": "Boron Control Rod",
+  "block.createnuclearindustrys.heat_gauge": "Heat Gauge",
   "item.createnuclearindustrys.example_item": "Example Item",
   "item.createnuclearindustrys.copper_heat_pipe": "Copper Heat Pipe",
 

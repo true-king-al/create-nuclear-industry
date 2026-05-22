@@ -117,17 +117,23 @@ public class RadiationManager extends SavedData {
         // Validate registered rods still exist (handles pistons, explosions, commands)
         List<BlockPos> gone = new ArrayList<>();
         for (BlockPos rod : rods) {
-            if (level.isLoaded(rod) && !(level.getBlockState(rod).getBlock() instanceof UraniumFuelRod))
-                gone.add(rod);
+            if (level.isLoaded(rod)) {
+                Block b = level.getBlockState(rod).getBlock();
+                if (!(b instanceof UraniumFuelRod) && !(b instanceof HeatGaugeBlock))
+                    gone.add(rod);
+            }
         }
         for (BlockPos rod : gone) removeRod(rod, level);
 
-        // Dissipate heat; melt rods that hit 1000°C
+        // Dissipate heat; melt uranium rods that hit 1000°C (gauges just cap)
         List<BlockPos> melted = new ArrayList<>();
         for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
             float heat = entry.getValue();
             if (heat >= MELTDOWN_TEMP) {
-                melted.add(entry.getKey());
+                if (level.getBlockState(entry.getKey()).getBlock() instanceof UraniumFuelRod)
+                    melted.add(entry.getKey());
+                else
+                    entry.setValue(MELTDOWN_TEMP - 1f);
             } else if (heat > 0f) {
                 entry.setValue(heat * 0.999f);
             }
@@ -180,9 +186,10 @@ public class RadiationManager extends SavedData {
             }
         }
 
-        // Emit one particle per rod per trigger — smooth continuous stream
+        // Emit one particle per uranium rod per trigger — smooth continuous stream
         for (BlockPos rod : new ArrayList<>(rods)) {
             if (!level.isLoaded(rod)) continue;
+            if (!(level.getBlockState(rod).getBlock() instanceof UraniumFuelRod)) continue;
             if (rng.nextInt(EMIT_INTERVAL) != 0) continue;
             emitFromRod(rod);
         }

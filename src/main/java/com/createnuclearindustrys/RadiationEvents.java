@@ -1,6 +1,7 @@
 package com.createnuclearindustrys;
 
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.block.Block;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.level.BlockEvent;
@@ -35,7 +36,8 @@ public class RadiationEvents {
     @SubscribeEvent
     public static void onBlockPlaced(BlockEvent.EntityPlaceEvent event) {
         if (!(event.getLevel() instanceof ServerLevel serverLevel)) return;
-        if (event.getPlacedBlock().getBlock() instanceof UraniumFuelRod) {
+        Block placed = event.getPlacedBlock().getBlock();
+        if (placed instanceof UraniumFuelRod || placed instanceof HeatGaugeBlock) {
             RadiationManager.get(serverLevel).registerRod(event.getPos());
         }
     }
@@ -43,7 +45,8 @@ public class RadiationEvents {
     @SubscribeEvent
     public static void onBlockBroken(BlockEvent.BreakEvent event) {
         if (!(event.getLevel() instanceof ServerLevel serverLevel)) return;
-        if (event.getState().getBlock() instanceof UraniumFuelRod) {
+        Block broken = event.getState().getBlock();
+        if (broken instanceof UraniumFuelRod || broken instanceof HeatGaugeBlock) {
             RadiationManager.get(serverLevel).removeRod(event.getPos(), serverLevel);
         }
     }

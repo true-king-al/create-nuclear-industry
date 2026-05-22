@@ -7,6 +7,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -31,7 +32,8 @@ public class CopperHeatPipeItem extends Item {
         ServerLevel serverLevel = (ServerLevel) level;
         RadiationManager manager = RadiationManager.get(serverLevel);
 
-        if (!(level.getBlockState(clicked).getBlock() instanceof UraniumFuelRod)) {
+        Block clickedBlock = level.getBlockState(clicked).getBlock();
+        if (!(clickedBlock instanceof UraniumFuelRod) && !(clickedBlock instanceof HeatGaugeBlock)) {
             pendingFirst.remove(playerId);
             return InteractionResult.PASS;
         }

@@ -118,6 +118,9 @@ configurations {
 }
 
 dependencies {
+    // Mods loaded in dev environment only (not shipped as dependencies)
+    localRuntime fileTree(dir: 'libs', include: ['*.jar'])
+
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
     // compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
