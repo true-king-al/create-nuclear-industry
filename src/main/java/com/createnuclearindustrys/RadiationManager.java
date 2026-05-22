@@ -8,6 +8,8 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.entity.item.FallingBlockEntity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -70,13 +72,27 @@ public class RadiationManager extends SavedData {
     }
 
     public void tick(ServerLevel level) {
-        // Validate registered nodes still exist (handles pistons, explosions, commands)
+        // Validate registered nodes still exist (handles pistons, explosions, /fill, etc.)
         List<BlockPos> gone = new ArrayList<>();
         for (BlockPos pos : rods) {
             if (level.isLoaded(pos) && !isHeatNode(level.getBlockState(pos).getBlock()))
                 gone.add(pos);
         }
         for (BlockPos pos : gone) removeRod(pos, level);
+
+        // Auto-discover heat nodes adjacent to the known network that weren't registered
+        // (catches blocks placed by /fill, commands, pistons, or FallingBlockEntity landing)
+        List<BlockPos> toRegister = new ArrayList<>();
+        for (BlockPos pos : new ArrayList<>(rods)) {
+            for (Direction dir : Direction.values()) {
+                BlockPos neighbor = pos.relative(dir);
+                if (rods.contains(neighbor.immutable())) continue;
+                if (!level.isLoaded(neighbor)) continue;
+                if (isHeatNode(level.getBlockState(neighbor).getBlock()))
+                    toRegister.add(neighbor.immutable());
+            }
+        }
+        for (BlockPos pos : toRegister) registerRod(pos);
 
         // Dissipate heat; uranium rods melt at 1000°C, everything else just caps
         List<BlockPos> melted = new ArrayList<>();
@@ -85,18 +101,24 @@ public class RadiationManager extends SavedData {
             if (heat >= MELTDOWN_TEMP) {
                 if (level.getBlockState(entry.getKey()).getBlock() instanceof UraniumFuelRod)
                     melted.add(entry.getKey());
-                else
-                    entry.setValue(MELTDOWN_TEMP - 1f);
             } else if (heat > 0f) {
                 entry.setValue(heat * 0.999f);
             }
         }
         for (BlockPos pos : melted) {
-            level.setBlock(pos, Blocks.LAVA.defaultBlockState(), 3);
+            triggerMeltdown(pos, level);
             rods.remove(pos);
             rodHeat.remove(pos);
         }
         if (!melted.isEmpty()) setDirty();
+
+        // Thermal generators actively drain heat from the network (heat → rotation)
+        for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
+            if (!(level.getBlockState(entry.getKey()).getBlock() instanceof ThermalGeneratorBlock)) continue;
+            float heat = entry.getValue();
+            if (heat <= 10f) continue;
+            entry.setValue(Math.max(0f, heat - heat * 0.005f));
+        }
 
         // Vertical conduction between stacked uranium rods
         for (BlockPos pos : new ArrayList<>(rods)) {
@@ -104,7 +126,7 @@ public class RadiationManager extends SavedData {
             if (!rods.contains(above)) continue;
             float heatHere  = rodHeat.getOrDefault(pos, 0f);
             float heatAbove = rodHeat.getOrDefault(above, 0f);
-            float transfer  = (heatHere - heatAbove) * 0.05f;
+            float transfer  = (heatHere - heatAbove) * 0.20f;
             if (Math.abs(transfer) < 0.01f) continue;
             rodHeat.put(pos, heatHere - transfer);
             rodHeat.put(above.immutable(), heatAbove + transfer);
@@ -122,7 +144,7 @@ public class RadiationManager extends SavedData {
                 if (!pipeProcessed.add(key)) continue;
                 float heatA = rodHeat.getOrDefault(pos, 0f);
                 float heatB = rodHeat.getOrDefault(neighbor, 0f);
-                float transfer = (heatA - heatB) * 0.05f;
+                float transfer = (heatA - heatB) * 0.25f;
                 if (Math.abs(transfer) < 0.01f) continue;
                 rodHeat.put(pos, heatA - transfer);
                 rodHeat.put(neighbor.immutable(), heatB + transfer);
@@ -132,20 +154,33 @@ public class RadiationManager extends SavedData {
         // Sync heat_level block state to clients (drives light + tint)
         for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
             BlockPos pos = entry.getKey();
-            int newLevel = Math.min(15, (int)(entry.getValue() / MELTDOWN_TEMP * 15));
+            float heat = entry.getValue();
             BlockState current = level.getBlockState(pos);
-            if (current.getBlock() instanceof UraniumFuelRod
-                    && current.getValue(UraniumFuelRod.HEAT_LEVEL) != newLevel) {
-                level.setBlock(pos, current.setValue(UraniumFuelRod.HEAT_LEVEL, newLevel), 2);
+            if (current.getBlock() instanceof UraniumFuelRod) {
+                int newLevel = Math.min(15, (int)(heat / MELTDOWN_TEMP * 15));
+                if (current.getValue(UraniumFuelRod.HEAT_LEVEL) != newLevel)
+                    level.setBlock(pos, current.setValue(UraniumFuelRod.HEAT_LEVEL, newLevel), 2);
+            } else if (current.getBlock() instanceof HeatGaugeBlock
+                    && level.getBlockEntity(pos) instanceof HeatGaugeBlockEntity be) {
+                be.setHeat(heat);
+            } else if (current.getBlock() instanceof ThermalGeneratorBlock
+                    && level.getBlockEntity(pos) instanceof ThermalGeneratorBlockEntity tbe) {
+                tbe.setHeat(heat);
             }
         }
 
-        // Emit one particle per uranium rod per trigger
+        // Emit particles — rate scales with heat to simulate criticality
         for (BlockPos rod : new ArrayList<>(rods)) {
             if (!level.isLoaded(rod)) continue;
             if (!(level.getBlockState(rod).getBlock() instanceof UraniumFuelRod)) continue;
-            if (rng.nextInt(EMIT_INTERVAL) != 0) continue;
+            float heatFrac = Math.min(1f, rodHeat.getOrDefault(rod, 0f) / MELTDOWN_TEMP);
+            // interval shrinks from 10 (cold) down to 1 (at meltdown temp) — 10× more particles
+            int interval = Math.max(1, (int)(EMIT_INTERVAL * (1f - heatFrac * 0.9f)));
+            if (rng.nextInt(interval) != 0) continue;
             emitFromRod(rod);
+            // Near criticality: burst a second particle
+            if (heatFrac > 0.8f && rng.nextFloat() < (heatFrac - 0.8f) * 5f)
+                emitFromRod(rod);
         }
 
         List<UUID> dead = new ArrayList<>();
@@ -156,8 +191,58 @@ public class RadiationManager extends SavedData {
         if (!dead.isEmpty()) { dead.forEach(particles::remove); setDirty(); }
     }
 
+    private void triggerMeltdown(BlockPos epicenter, ServerLevel level) {
+        // Power scales with ALL registered rods nearby — big reactors should make bigger booms
+        int nearbyRods = 0;
+        for (BlockPos rodPos : rods) {
+            if (!rodPos.equals(epicenter) && rodPos.distSqr(epicenter) <= 100)
+                nearbyRods++;
+        }
+
+        // Fling surrounding blocks outward before the explosion
+        int flingRadius = 6;
+        for (int dx = -flingRadius; dx <= flingRadius; dx++) {
+            for (int dy = -flingRadius; dy <= flingRadius; dy++) {
+                for (int dz = -flingRadius; dz <= flingRadius; dz++) {
+                    if (dx*dx + dy*dy + dz*dz > flingRadius * flingRadius) continue;
+                    if (rng.nextFloat() > 0.15f) continue;
+
+                    BlockPos scanPos = epicenter.offset(dx, dy, dz);
+                    if (!level.isLoaded(scanPos)) continue;
+
+                    BlockState state = level.getBlockState(scanPos);
+                    if (state.isAir()) continue;
+                    if (!state.getFluidState().isEmpty()) continue;
+                    if (state.getDestroySpeed(level, scanPos) < 0) continue;
+
+                    BlockState launchState = rng.nextFloat() < 0.25f ? Blocks.LAVA.defaultBlockState() : state;
+                    FallingBlockEntity flung = FallingBlockEntity.fall(level, scanPos, launchState);
+
+                    Vec3 dir = new Vec3(dx + 0.001, Math.max(dy, 0) + 0.6, dz + 0.001).normalize();
+                    double speed = 0.6 + rng.nextDouble() * 1.4;
+                    flung.setDeltaMovement(dir.scale(speed));
+                    flung.dropItem = false;
+                }
+            }
+        }
+
+        // Explosion power: base 7, +1.5 per nearby rod, capped at 20
+        float power = Math.min(20f, 7f + nearbyRods * 1.5f);
+        level.explode(null,
+            epicenter.getX() + 0.5, epicenter.getY() + 0.5, epicenter.getZ() + 0.5,
+            power, true, Level.ExplosionInteraction.TNT);
+
+        // Chain reaction: dump heat into nearby rods so they melt next tick
+        // This ensures a big reactor cascades outward rather than fizzling
+        for (BlockPos rodPos : new ArrayList<>(rods)) {
+            if (!rodPos.equals(epicenter) && rodPos.distSqr(epicenter) <= 25) // 5-block radius
+                addHeat(rodPos, MELTDOWN_TEMP * 1.2f);
+        }
+    }
+
     private static boolean isHeatNode(Block b) {
-        return b instanceof UraniumFuelRod || b instanceof HeatGaugeBlock || b instanceof HeatPipeBlock;
+        return b instanceof UraniumFuelRod || b instanceof HeatGaugeBlock
+                || b instanceof HeatPipeBlock || b instanceof ThermalGeneratorBlock;
     }
 
     private void emitFromRod(BlockPos pos) {
@@ -197,6 +282,7 @@ public class RadiationManager extends SavedData {
         }
 
         if (rods.contains(hitBlock) && !hitBlock.equals(p.source)
+                && !hitBlock.equals(p.source.above()) && !hitBlock.equals(p.source.below())
                 && !(level.getBlockState(hitBlock).getBlock() instanceof HeatPipeBlock)) {
             addHeat(hitBlock, p.energy * 5f);
         }

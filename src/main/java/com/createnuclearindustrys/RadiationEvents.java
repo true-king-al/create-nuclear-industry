@@ -37,7 +37,8 @@ public class RadiationEvents {
     public static void onBlockPlaced(BlockEvent.EntityPlaceEvent event) {
         if (!(event.getLevel() instanceof ServerLevel serverLevel)) return;
         Block placed = event.getPlacedBlock().getBlock();
-        if (placed instanceof UraniumFuelRod || placed instanceof HeatGaugeBlock || placed instanceof HeatPipeBlock) {
+        if (placed instanceof UraniumFuelRod || placed instanceof HeatGaugeBlock
+                || placed instanceof HeatPipeBlock || placed instanceof ThermalGeneratorBlock) {
             RadiationManager.get(serverLevel).registerRod(event.getPos());
         }
     }
@@ -46,7 +47,8 @@ public class RadiationEvents {
     public static void onBlockBroken(BlockEvent.BreakEvent event) {
         if (!(event.getLevel() instanceof ServerLevel serverLevel)) return;
         Block broken = event.getState().getBlock();
-        if (broken instanceof UraniumFuelRod || broken instanceof HeatGaugeBlock || broken instanceof HeatPipeBlock) {
+        if (broken instanceof UraniumFuelRod || broken instanceof HeatGaugeBlock
+                || broken instanceof HeatPipeBlock || broken instanceof ThermalGeneratorBlock) {
             RadiationManager.get(serverLevel).removeRod(event.getPos(), serverLevel);
         }
     }

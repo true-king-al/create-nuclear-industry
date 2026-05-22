@@ -6,6 +6,7 @@ import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.BlockItem;
@@ -41,6 +42,7 @@ public class CreateNuclearIndustrys {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(MODID);
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
+    public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
 
     public static final DeferredBlock<Block> EXAMPLE_BLOCK = BLOCKS.registerSimpleBlock("example_block", BlockBehaviour.Properties.of().mapColor(MapColor.STONE));
     public static final DeferredItem<BlockItem> EXAMPLE_BLOCK_ITEM = ITEMS.registerSimpleBlockItem("example_block", EXAMPLE_BLOCK);
@@ -48,6 +50,9 @@ public class CreateNuclearIndustrys {
     public static final DeferredBlock<HeatGaugeBlock> HEAT_GAUGE = BLOCKS.registerBlock("heat_gauge",
             HeatGaugeBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(2.0f, 6.0f).requiresCorrectToolForDrops());
     public static final DeferredItem<BlockItem> HEAT_GAUGE_ITEM = ITEMS.registerSimpleBlockItem("heat_gauge", HEAT_GAUGE);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<HeatGaugeBlockEntity>> HEAT_GAUGE_BLOCK_ENTITY =
+            BLOCK_ENTITY_TYPES.register("heat_gauge", () -> BlockEntityType.Builder.of(
+                    HeatGaugeBlockEntity::new, HEAT_GAUGE.get()).build(null));
 
     public static final DeferredBlock<BoronControlRod> BORON_CONTROL_ROD = BLOCKS.registerBlock("boron_control_rod",
             BoronControlRod::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLUE).strength(2.0f, 6.0f).requiresCorrectToolForDrops().noOcclusion());
@@ -65,6 +70,13 @@ public class CreateNuclearIndustrys {
             HeatPipeBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_ORANGE).strength(1.5f, 6.0f).requiresCorrectToolForDrops());
     public static final DeferredItem<BlockItem> HEAT_PIPE_ITEM = ITEMS.registerSimpleBlockItem("heat_pipe", HEAT_PIPE);
 
+    public static final DeferredBlock<ThermalGeneratorBlock> THERMAL_GENERATOR = BLOCKS.registerBlock("thermal_generator",
+            ThermalGeneratorBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(3.0f, 8.0f).requiresCorrectToolForDrops().noOcclusion());
+    public static final DeferredItem<BlockItem> THERMAL_GENERATOR_ITEM = ITEMS.registerSimpleBlockItem("thermal_generator", THERMAL_GENERATOR);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ThermalGeneratorBlockEntity>> THERMAL_GENERATOR_BLOCK_ENTITY =
+            BLOCK_ENTITY_TYPES.register("thermal_generator", () -> BlockEntityType.Builder.of(
+                    ThermalGeneratorBlockEntity::new, THERMAL_GENERATOR.get()).build(null));
+
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.createnuclearindustrys")) //The language key for the title of your CreativeModeTab
             .withTabsBefore(CreativeModeTabs.COMBAT)
@@ -75,6 +87,7 @@ public class CreateNuclearIndustrys {
                 output.accept(BORON_CONTROL_ROD_ITEM.get());
                 output.accept(HEAT_GAUGE_ITEM.get());
                 output.accept(HEAT_PIPE_ITEM.get());
+                output.accept(THERMAL_GENERATOR_ITEM.get());
             }).build());
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
@@ -89,6 +102,8 @@ public class CreateNuclearIndustrys {
         ITEMS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
+        // Register block entity types
+        BLOCK_ENTITY_TYPES.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (CreateNuclearIndustrys) to respond directly to events.

@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "axis=x": { "model": "createnuclearindustrys:block/thermal_generator", "x": 90, "y": 90 },
+    "axis=y": { "model": "createnuclearindustrys:block/thermal_generator" },
+    "axis=z": { "model": "createnuclearindustrys:block/thermal_generator", "x": 90, "y": 180 }
+  }
+}
