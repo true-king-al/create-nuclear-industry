@@ -1,0 +1,15 @@
+{
+  "itemGroup.createnuclearindustrys": "Create Nuclear Industrys",
+  "block.createnuclearindustrys.example_block": "Example Block",
+  "block.createnuclearindustrys.uranium_fuel_rod": "Uranium Fuel Rod",
+  "item.createnuclearindustrys.example_item": "Example Item",
+  "item.createnuclearindustrys.copper_heat_pipe": "Copper Heat Pipe",
+
+  "createnuclearindustrys.configuration.title": "Create Nuclear Industrys Configs",
+  "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml": "Create Nuclear Industrys Configs",
+  "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml.title": "Create Nuclear Industrys Configs",
+  "createnuclearindustrys.configuration.items": "Item List",
+  "createnuclearindustrys.configuration.logDirtBlock": "Log Dirt Block",
+  "createnuclearindustrys.configuration.magicNumberIntroduction": "Magic Number Text",
+  "createnuclearindustrys.configuration.magicNumber": "Magic Number"
+}
