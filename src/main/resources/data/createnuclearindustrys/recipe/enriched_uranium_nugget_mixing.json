@@ -4,6 +4,6 @@
     {"item": "createnuclearindustrys:uranium_ore"}
   ],
   "results": [
-    {"item": "createnuclearindustrys:enriched_uranium_nugget", "count": 1}
+    {"id": "createnuclearindustrys:enriched_uranium_nugget", "count": 1}
   ]
 }
