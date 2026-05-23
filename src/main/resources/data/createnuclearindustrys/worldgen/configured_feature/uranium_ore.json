@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:ore",
+  "config": {
+    "size": 4,
+    "discard_chance_on_air_exposure": 0.5,
+    "targets": [
+      {
+        "target": {"predicate_type": "minecraft:tag", "tag": "minecraft:stone_ore_replaceables"},
+        "state": {"Name": "createnuclearindustrys:uranium_ore_block"}
+      },
+      {
+        "target": {"predicate_type": "minecraft:tag", "tag": "minecraft:deepslate_ore_replaceables"},
+        "state": {"Name": "createnuclearindustrys:uranium_ore_block"}
+      }
+    ]
+  }
+}

@@ -70,11 +70,12 @@ public class CreateNuclearIndustrys {
             HeatPipeBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_ORANGE).strength(1.5f, 6.0f).requiresCorrectToolForDrops());
     public static final DeferredItem<BlockItem> HEAT_PIPE_ITEM = ITEMS.registerSimpleBlockItem("heat_pipe", HEAT_PIPE);
 
-    public static final DeferredBlock<UraniumOreBlock> URANIUM_ORE = BLOCKS.registerBlock("uranium_ore",
+    public static final DeferredBlock<UraniumOreBlock> URANIUM_ORE_BLOCK = BLOCKS.registerBlock("uranium_ore_block",
             UraniumOreBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.STONE)
                     .strength(3.0f, 3.0f).requiresCorrectToolForDrops().randomTicks());
-    public static final DeferredItem<BlockItem> URANIUM_ORE_ITEM = ITEMS.registerSimpleBlockItem("uranium_ore", URANIUM_ORE);
+    public static final DeferredItem<BlockItem> URANIUM_ORE_BLOCK_ITEM = ITEMS.registerSimpleBlockItem("uranium_ore_block", URANIUM_ORE_BLOCK);
 
+    public static final DeferredItem<Item> URANIUM_ORE = ITEMS.registerSimpleItem("uranium_ore", new Item.Properties());
     public static final DeferredItem<Item> ENRICHED_URANIUM_NUGGET = ITEMS.registerSimpleItem("enriched_uranium_nugget", new Item.Properties());
     public static final DeferredItem<Item> ENRICHED_URANIUM = ITEMS.registerSimpleItem("enriched_uranium", new Item.Properties());
 
@@ -90,7 +91,8 @@ public class CreateNuclearIndustrys {
             .withTabsBefore(CreativeModeTabs.COMBAT)
             .icon(() -> URANIUM_FUEL_ROD_ITEM.get().getDefaultInstance())
             .displayItems((parameters, output) -> {
-                output.accept(URANIUM_ORE_ITEM.get());
+                output.accept(URANIUM_ORE_BLOCK_ITEM.get());
+                output.accept(URANIUM_ORE.get());
                 output.accept(ENRICHED_URANIUM_NUGGET.get());
                 output.accept(ENRICHED_URANIUM.get());
                 output.accept(URANIUM_FUEL_ROD_ITEM.get());
