@@ -5,42 +5,40 @@ import net.minecraft.client.particle.*;
 import net.minecraft.core.particles.SimpleParticleType;
 
 /**
- * Rising steam cloud particle.
+ * Rising steam particle — uses the same generic_* sprites as the vanilla
+ * cloud particle, scaled up large and tinted light cyan.
  *
- * Lifetime : 60–90 seconds (1200–1800 ticks)
- * Motion   : strong upward drift that is maintained throughout life
- *            (gravity is negative so the particle always wants to rise;
- *            horizontal spread slows over time for a realistic plume)
- * Colour   : light cyan tint (0.88 / 0.96 / 1.0 RGB) applied over a
- *            white soft-puff sprite
- * Fade     : slow fade-in over first 0.5 s, gentle fade-out over last 5 s
+ * Lifetime : 10–30 seconds (200–600 ticks)
+ * Motion   : sustained upward rise (negative gravity adds lift every tick)
  */
 public class SteamParticle extends TextureSheetParticle {
+
+    private final SpriteSet sprites;
 
     private SteamParticle(ClientLevel level, double x, double y, double z,
                           double vx, double vy, double vz, SpriteSet sprites) {
         super(level, x, y, z);
-        this.setSprite(sprites.get(this.random)); // pick the single steam sprite
+        this.sprites = sprites;
+        this.setSpriteFromAge(sprites); // start on the "big" sprite
 
-        // Light cyan tint over the white puff texture
+        // Light cyan tint — the generic sprites are white, so this tints them
         this.rCol = 0.88f;
         this.gCol = 0.96f;
         this.bCol = 1.00f;
-        this.alpha = 0.0f; // start transparent, fade in
+        this.alpha = 0.0f; // fade in
 
-        // Large puff — scales with random variation
-        this.quadSize = 0.55f + this.random.nextFloat() * 0.45f;
+        // Large puff, same scale range vanilla cloud uses
+        this.quadSize = 0.9f + this.random.nextFloat() * 0.6f;
 
-        // 60–90 second lifetime in ticks
-        this.lifetime = 1200 + this.random.nextInt(600);
+        // 10–30 second lifetime
+        this.lifetime = 200 + this.random.nextInt(400);
 
-        // Initial upward velocity — used with a sustained lift force
-        this.xd = vx + (this.random.nextDouble() - 0.5) * 0.04;
-        this.yd = Math.max(vy, 0.03) + this.random.nextDouble() * 0.03;
-        this.zd = vz + (this.random.nextDouble() - 0.5) * 0.04;
+        // Upward velocity — maintained by negative gravity
+        this.xd = vx + (this.random.nextDouble() - 0.5) * 0.05;
+        this.yd = Math.max(vy, 0.04) + this.random.nextDouble() * 0.04;
+        this.zd = vz + (this.random.nextDouble() - 0.5) * 0.05;
 
-        // Negative gravity → the particle continuously rises
-        // At -0.08 it applies  +0.08 * 0.04 = +0.0032 yd per tick (gentle sustained lift)
+        // Negative gravity → adds upward force each tick so it continuously rises
         this.gravity = -0.08f;
     }
 
@@ -55,31 +53,33 @@ public class SteamParticle extends TextureSheetParticle {
             return;
         }
 
-        // Apply gravity (negative → adds upward force each tick)
-        this.yd -= 0.04 * this.gravity; // 0.04 * 0.08 = +0.0032 upward each tick
+        // Animate through sprites (large → small) the same way vanilla cloud does
+        this.setSpriteFromAge(sprites);
 
-        // Move
+        // Sustained lift: gravity = -0.08 → yd += 0.08 * 0.04 = +0.0032 per tick
+        this.yd -= 0.04 * this.gravity;
+
         this.move(this.xd, this.yd, this.zd);
 
-        // Horizontal drift slows down — particles converge into a rising column
+        // Dampen horizontal, very light vertical damping (gravity keeps it rising)
         this.xd *= 0.96;
         this.zd *= 0.96;
-        // Vertical velocity has gentle damping but gravity keeps it rising
-        this.yd *= 0.99;
+        this.yd *= 0.98;
 
-        // Grow slightly as it rises (steam expands)
-        if (this.age < this.lifetime * 0.5f) {
-            this.quadSize += 0.003f;
+        // Grow slightly as it rises
+        if (this.age < this.lifetime * 0.6f) {
+            this.quadSize += 0.004f;
         }
 
-        // Alpha: fade in over first 10 ticks, hold, fade out over last 100 ticks
-        if (this.age < 10) {
-            this.alpha = this.age / 10.0f * 0.5f;
-        } else if (this.age > this.lifetime - 100) {
-            float fadeProgress = (this.age - (this.lifetime - 100)) / 100.0f;
-            this.alpha = 0.5f * (1.0f - fadeProgress);
+        // Alpha: fade in 0.5 s, hold at 0.45, fade out last 2 s
+        int fadeInEnd  = 10;
+        int fadeOutStart = this.lifetime - 40;
+        if (this.age < fadeInEnd) {
+            this.alpha = (float) this.age / fadeInEnd * 0.45f;
+        } else if (this.age > fadeOutStart) {
+            this.alpha = 0.45f * (1f - (float)(this.age - fadeOutStart) / 40f);
         } else {
-            this.alpha = 0.5f;
+            this.alpha = 0.45f;
         }
     }
 
@@ -87,8 +87,6 @@ public class SteamParticle extends TextureSheetParticle {
     public ParticleRenderType getRenderType() {
         return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
     }
-
-    // ── Factory ───────────────────────────────────────────────────────────────
 
     public static class Provider implements ParticleProvider<SimpleParticleType> {
         private final SpriteSet sprites;
