@@ -1,0 +1,9 @@
+{
+  "type": "create:mixing",
+  "ingredients": [
+    {"item": "createnuclearindustrys:uranium_ore"}
+  ],
+  "results": [
+    {"item": "createnuclearindustrys:enriched_uranium_nugget", "count": 1}
+  ]
+}

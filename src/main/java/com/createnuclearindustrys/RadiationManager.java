@@ -245,6 +245,25 @@ public class RadiationManager extends SavedData {
                 || b instanceof HeatPipeBlock || b instanceof ThermalGeneratorBlock;
     }
 
+    public void emitFromOre(BlockPos pos) {
+        double theta = rng.nextDouble() * Math.PI * 2;
+        double phi   = Math.acos(2.0 * rng.nextDouble() - 1.0);
+        double speed = 0.05 + rng.nextDouble() * 0.12;
+        double vx    = speed * Math.sin(phi) * Math.cos(theta);
+        double vy    = speed * Math.cos(phi);
+        double vz    = speed * Math.sin(phi) * Math.sin(theta);
+
+        RadiationParticle p = new RadiationParticle(
+            UUID.randomUUID(), Vec3.atCenterOf(pos),
+            new Vec3(vx, vy, vz),
+            0.3f + rng.nextFloat() * 0.4f, 0.7f + rng.nextFloat() * 0.3f, 0.1f,
+            0.15f + rng.nextFloat() * 0.1f, 30 + rng.nextInt(40), pos
+        );
+        particles.put(p.id, p);
+        pendingBroadcast.add(p);
+        setDirty();
+    }
+
     private void emitFromRod(BlockPos pos) {
         double theta = rng.nextDouble() * Math.PI * 2;
         double phi   = Math.acos(2.0 * rng.nextDouble() - 1.0);
