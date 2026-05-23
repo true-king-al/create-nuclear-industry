@@ -1,6 +1,11 @@
 {
   "replace": false,
   "values": [
-    "createnuclearindustrys:uranium_ore_block"
+    "createnuclearindustrys:uranium_ore_block",
+    "createnuclearindustrys:heat_gauge",
+    "createnuclearindustrys:boron_control_rod",
+    "createnuclearindustrys:uranium_fuel_rod",
+    "createnuclearindustrys:heat_pipe",
+    "createnuclearindustrys:thermal_generator"
   ]
 }
