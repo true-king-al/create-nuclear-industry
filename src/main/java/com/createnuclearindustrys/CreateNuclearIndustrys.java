@@ -25,6 +25,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.minecraft.world.effect.MobEffect;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
@@ -41,6 +42,10 @@ public class CreateNuclearIndustrys {
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(MODID);
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
+    public static final DeferredRegister<MobEffect> MOB_EFFECTS = DeferredRegister.create(Registries.MOB_EFFECT, MODID);
+
+    public static final DeferredHolder<MobEffect, RadiationSicknessEffect> RADIATION_SICKNESS =
+            MOB_EFFECTS.register("radiation_sickness", RadiationSicknessEffect::new);
 
     public static final DeferredBlock<HeatGaugeBlock> HEAT_GAUGE = BLOCKS.registerBlock("heat_gauge",
             HeatGaugeBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(2.0f, 6.0f).requiresCorrectToolForDrops());
@@ -108,6 +113,8 @@ public class CreateNuclearIndustrys {
         CREATIVE_MODE_TABS.register(modEventBus);
         // Register block entity types
         BLOCK_ENTITY_TYPES.register(modEventBus);
+        // Register mob effects
+        MOB_EFFECTS.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (CreateNuclearIndustrys) to respond directly to events.

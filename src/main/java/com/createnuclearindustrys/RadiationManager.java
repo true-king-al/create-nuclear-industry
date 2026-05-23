@@ -8,7 +8,10 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.FallingBlockEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -291,6 +294,16 @@ public class RadiationManager extends SavedData {
 
         if (BlockPos.containing(p.pos).equals(p.source)) { p.pos = next; return; }
 
+        // Check if the particle passes through a player — if so, give them radiation sickness
+        AABB particleHitbox = new AABB(next.x - 0.4, next.y - 0.4, next.z - 0.4,
+                                       next.x + 0.4, next.y + 0.4, next.z + 0.4);
+        List<Player> players = level.getEntitiesOfClass(Player.class, particleHitbox);
+        if (!players.isEmpty()) {
+            applyRadiationSickness(players.get(0));
+            p.ticksLeft = 0; // absorbed by the player's body
+            return;
+        }
+
         if (!isPointInSolid(level, next)) { p.pos = next; return; }
 
         BlockPos hitBlock = BlockPos.containing(next);
@@ -312,6 +325,14 @@ public class RadiationManager extends SavedData {
         if (isPointInSolid(level, new Vec3(p.pos.x,            p.pos.y,            p.pos.z + p.vel.z))) vz = -vz;
         if (vx == p.vel.x && vy == p.vel.y && vz == p.vel.z) { vx = -vx; vy = -vy; vz = -vz; }
         p.vel = new Vec3(vx, vy, vz);
+    }
+
+    /** Extends (or starts) the Radiation Sickness effect on the given player by +1 second. */
+    private static void applyRadiationSickness(LivingEntity entity) {
+        var holder = CreateNuclearIndustrys.RADIATION_SICKNESS;
+        MobEffectInstance existing = entity.getEffect(holder);
+        int newDuration = (existing != null ? existing.getDuration() : 0) + 20;
+        entity.addEffect(new MobEffectInstance(holder, newDuration, 0, false, true, true));
     }
 
     static float getAbsorption(BlockState state) {

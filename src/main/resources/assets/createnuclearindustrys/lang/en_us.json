@@ -36,6 +36,8 @@
   "block.createnuclearindustrys.thermal_generator.tooltip.condition2": "At Peak Temperature",
   "block.createnuclearindustrys.thermal_generator.tooltip.behaviour2": "Keep the reactor fuelled and _coolant flowing_ to sustain output.",
 
+  "effect.createnuclearindustrys.radiation_sickness": "Radiation Sickness",
+
   "createnuclearindustrys.configuration.title": "Create Nuclear Industrys Configs",
   "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml": "Create Nuclear Industrys Configs",
   "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml.title": "Create Nuclear Industrys Configs",
