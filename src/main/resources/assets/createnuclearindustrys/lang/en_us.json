@@ -1,11 +1,16 @@
 {
   "itemGroup.createnuclearindustrys": "Create Nuclear Industrys",
-  "block.createnuclearindustrys.example_block": "Example Block",
+
+  "block.createnuclearindustrys.uranium_ore_block": "Uranium Ore",
   "block.createnuclearindustrys.uranium_fuel_rod": "Uranium Fuel Rod",
   "block.createnuclearindustrys.boron_control_rod": "Boron Control Rod",
   "block.createnuclearindustrys.heat_gauge": "Heat Gauge",
-  "item.createnuclearindustrys.example_item": "Example Item",
   "block.createnuclearindustrys.heat_pipe": "Heat Pipe",
+  "block.createnuclearindustrys.thermal_generator": "Thermal Generator",
+
+  "item.createnuclearindustrys.uranium_ore": "Uranium Ore",
+  "item.createnuclearindustrys.enriched_uranium_nugget": "Enriched Uranium Nugget",
+  "item.createnuclearindustrys.enriched_uranium": "Enriched Uranium",
 
   "createnuclearindustrys.configuration.title": "Create Nuclear Industrys Configs",
   "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml": "Create Nuclear Industrys Configs",
