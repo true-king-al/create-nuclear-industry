@@ -12,6 +12,30 @@
   "item.createnuclearindustrys.enriched_uranium_nugget": "Enriched Uranium Nugget",
   "item.createnuclearindustrys.enriched_uranium": "Enriched Uranium",
 
+  "block.createnuclearindustrys.uranium_fuel_rod.tooltip.summary": "The _fuel core_ of a nuclear fission reactor.",
+  "block.createnuclearindustrys.uranium_fuel_rod.tooltip.condition1": "When Receiving Radiation",
+  "block.createnuclearindustrys.uranium_fuel_rod.tooltip.behaviour1": "Absorbs radiation from neighbouring rods, generating _heat_ that spreads through connected _Heat Pipes_.",
+  "block.createnuclearindustrys.uranium_fuel_rod.tooltip.condition2": "Approaching Critical Temperature",
+  "block.createnuclearindustrys.uranium_fuel_rod.tooltip.behaviour2": "Risk of _meltdown_! Install _Boron Control Rods_ nearby to absorb excess radiation.",
+
+  "block.createnuclearindustrys.boron_control_rod.tooltip.summary": "Dampens _nuclear reactions_ by absorbing stray radiation particles.",
+  "block.createnuclearindustrys.boron_control_rod.tooltip.condition1": "When Adjacent to Uranium Fuel Rods",
+  "block.createnuclearindustrys.boron_control_rod.tooltip.behaviour1": "Absorbs incoming _radiation particles_, slowing the chain reaction and preventing _heat buildup_ in neighbouring rods.",
+
+  "block.createnuclearindustrys.heat_gauge.tooltip.summary": "Monitors the _temperature_ of a connected heat network.",
+  "block.createnuclearindustrys.heat_gauge.tooltip.condition1": "When Connected to Heat Network",
+  "block.createnuclearindustrys.heat_gauge.tooltip.behaviour1": "Displays the current _heat level_ in degrees. Place between a reactor and generator to track output and prevent overheating.",
+
+  "block.createnuclearindustrys.heat_pipe.tooltip.summary": "Conducts _thermal energy_ between heat network components.",
+  "block.createnuclearindustrys.heat_pipe.tooltip.condition1": "When Connected to Heat Sources",
+  "block.createnuclearindustrys.heat_pipe.tooltip.behaviour1": "Gradually _equalises heat_ across all connected nodes. Route energy from a _reactor_ to a _Thermal Generator_ using pipes.",
+
+  "block.createnuclearindustrys.thermal_generator.tooltip.summary": "Converts _heat energy_ into _rotational force_.",
+  "block.createnuclearindustrys.thermal_generator.tooltip.condition1": "When Connected to Heat Network",
+  "block.createnuclearindustrys.thermal_generator.tooltip.behaviour1": "Outputs a spinning _shaft_ once the network temperature exceeds 10°. Speed and _stress capacity_ scale with heat level.",
+  "block.createnuclearindustrys.thermal_generator.tooltip.condition2": "At Peak Temperature",
+  "block.createnuclearindustrys.thermal_generator.tooltip.behaviour2": "Generates up to _512 SU_ of stress capacity. Keep the reactor fuelled and _coolant flowing_ to sustain output.",
+
   "createnuclearindustrys.configuration.title": "Create Nuclear Industrys Configs",
   "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml": "Create Nuclear Industrys Configs",
   "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml.title": "Create Nuclear Industrys Configs",
