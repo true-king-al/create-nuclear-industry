@@ -38,6 +38,9 @@
 
   "effect.createnuclearindustrys.radiation_sickness": "Radiation Sickness",
 
+  "fluid_type.createnuclearindustrys.steam": "Steam",
+  "item.createnuclearindustrys.steam_bucket": "Bucket of Steam",
+
   "createnuclearindustrys.configuration.title": "Create Nuclear Industrys Configs",
   "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml": "Create Nuclear Industrys Configs",
   "createnuclearindustrys.configuration.section.createnuclearindustrys.common.toml.title": "Create Nuclear Industrys Configs",

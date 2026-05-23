@@ -9,6 +9,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent;
 
 @EventBusSubscriber(modid = CreateNuclearIndustrys.MODID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
 public class ClientModEvents {
@@ -27,6 +28,11 @@ public class ClientModEvents {
     private static void registerTooltip(Item item) {
         TooltipModifier.REGISTRY.register(item,
                 new ItemDescription.Modifier(item, FontHelper.Palette.GRAY_AND_WHITE));
+    }
+
+    @SubscribeEvent
+    public static void onRegisterParticles(RegisterParticleProvidersEvent event) {
+        event.registerSpriteSet(CreateNuclearIndustrys.STEAM_PARTICLE.get(), SteamParticle.Provider::new);
     }
 
     @SubscribeEvent

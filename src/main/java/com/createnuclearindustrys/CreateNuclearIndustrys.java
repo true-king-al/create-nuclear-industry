@@ -25,11 +25,18 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.LiquidBlock;
+import net.minecraft.world.level.material.Fluid;
+import net.neoforged.neoforge.fluids.FluidType;
 import net.neoforged.neoforge.registries.DeferredBlock;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
 
 // The value here should match an entry in the META-INF/neoforge.mods.toml file
 @Mod(CreateNuclearIndustrys.MODID)
@@ -43,9 +50,43 @@ public class CreateNuclearIndustrys {
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
     public static final DeferredRegister<MobEffect> MOB_EFFECTS = DeferredRegister.create(Registries.MOB_EFFECT, MODID);
+    public static final DeferredRegister<FluidType> FLUID_TYPES = DeferredRegister.create(NeoForgeRegistries.FLUID_TYPES, MODID);
+    public static final DeferredRegister<Fluid> FLUIDS = DeferredRegister.create(Registries.FLUID, MODID);
+    public static final DeferredRegister<net.minecraft.core.particles.ParticleType<?>> PARTICLE_TYPES =
+            DeferredRegister.create(Registries.PARTICLE_TYPE, MODID);
 
     public static final DeferredHolder<MobEffect, RadiationSicknessEffect> RADIATION_SICKNESS =
             MOB_EFFECTS.register("radiation_sickness", RadiationSicknessEffect::new);
+
+    // ── Steam fluid ───────────────────────────────────────────────────────────
+
+    public static final DeferredHolder<FluidType, SteamFluidType> STEAM_FLUID_TYPE =
+            FLUID_TYPES.register("steam", () -> new SteamFluidType(
+                    FluidType.Properties.create()
+                            .density(-200)       // rises (negative = lighter than air)
+                            .viscosity(200)
+                            .temperature(400)));
+
+    public static final DeferredHolder<Fluid, SteamFluid.Still> STEAM_STILL =
+            FLUIDS.register("steam", SteamFluid.Still::new);
+    public static final DeferredHolder<Fluid, SteamFluid.Flowing> STEAM_FLOWING =
+            FLUIDS.register("flowing_steam", SteamFluid.Flowing::new);
+
+    public static final DeferredBlock<LiquidBlock> STEAM_BLOCK =
+            BLOCKS.registerBlock("steam_fluid",
+                    p -> new SteamFluidBlock(STEAM_STILL.get(), p),
+                    BlockBehaviour.Properties.of()
+                            .noCollission().strength(100f).noLootTable().replaceable());
+
+    public static final DeferredItem<BucketItem> STEAM_BUCKET =
+            ITEMS.register("steam_bucket",
+                    () -> new BucketItem(STEAM_STILL.get(),
+                            new Item.Properties().craftRemainder(Items.BUCKET).stacksTo(1)));
+
+    // ── Steam particle ────────────────────────────────────────────────────────
+
+    public static final DeferredHolder<net.minecraft.core.particles.ParticleType<?>, SimpleParticleType> STEAM_PARTICLE =
+            PARTICLE_TYPES.register("steam", () -> new SimpleParticleType(false));
 
     public static final DeferredBlock<HeatGaugeBlock> HEAT_GAUGE = BLOCKS.registerBlock("heat_gauge",
             HeatGaugeBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(2.0f, 6.0f).requiresCorrectToolForDrops());
@@ -97,6 +138,7 @@ public class CreateNuclearIndustrys {
                 output.accept(HEAT_GAUGE_ITEM.get());
                 output.accept(HEAT_PIPE_ITEM.get());
                 output.accept(THERMAL_GENERATOR_ITEM.get());
+                output.accept(STEAM_BUCKET.get());
             }).build());
 
     // The constructor for the mod class is the first code that is run when your mod is loaded.
@@ -115,6 +157,11 @@ public class CreateNuclearIndustrys {
         BLOCK_ENTITY_TYPES.register(modEventBus);
         // Register mob effects
         MOB_EFFECTS.register(modEventBus);
+        // Register fluids and fluid types
+        FLUID_TYPES.register(modEventBus);
+        FLUIDS.register(modEventBus);
+        // Register particle types
+        PARTICLE_TYPES.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (CreateNuclearIndustrys) to respond directly to events.
