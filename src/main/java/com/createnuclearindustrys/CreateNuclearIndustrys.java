@@ -25,6 +25,9 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
+import com.simibubi.create.api.behaviour.display.DisplaySource;
+import com.simibubi.create.api.registry.CreateRegistries;
+import java.util.List;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.item.BucketItem;
@@ -54,6 +57,15 @@ public class CreateNuclearIndustrys {
     public static final DeferredRegister<Fluid> FLUIDS = DeferredRegister.create(Registries.FLUID, MODID);
     public static final DeferredRegister<net.minecraft.core.particles.ParticleType<?>> PARTICLE_TYPES =
             DeferredRegister.create(Registries.PARTICLE_TYPE, MODID);
+
+    // ── Create Display Sources ─────────────────────────────────────────────────
+    // Must be in CreateBuiltInRegistries.DISPLAY_SOURCE so Create's Display Link
+    // can find the source by its ResourceLocation and generate a translation key.
+    public static final DeferredRegister<DisplaySource> DISPLAY_SOURCES =
+            DeferredRegister.create(CreateRegistries.DISPLAY_SOURCE, MODID);
+
+    public static final DeferredHolder<DisplaySource, HeatGaugeDisplaySource> HEAT_GAUGE_DISPLAY_SOURCE =
+            DISPLAY_SOURCES.register("heat_gauge_temperature", HeatGaugeDisplaySource::new);
 
     public static final DeferredHolder<MobEffect, RadiationSicknessEffect> RADIATION_SICKNESS =
             MOB_EFFECTS.register("radiation_sickness", RadiationSicknessEffect::new);
@@ -162,6 +174,8 @@ public class CreateNuclearIndustrys {
         FLUIDS.register(modEventBus);
         // Register particle types
         PARTICLE_TYPES.register(modEventBus);
+        // Register display sources into Create's registry
+        DISPLAY_SOURCES.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in.
         // Note that this is necessary if and only if we want *this* class (CreateNuclearIndustrys) to respond directly to events.
@@ -174,8 +188,17 @@ public class CreateNuclearIndustrys {
     }
 
     private void commonSetup(FMLCommonSetupEvent event) {
-        // Some common setup code
         LOGGER.info("HELLO FROM COMMON SETUP");
+
+        // Map the registered DisplaySource instance to the Heat Gauge block entity type
+        // so Create's Display Link can discover it when pointed at the gauge.
+        // Must use the registered holder (.get()) so getTranslationKey() works in the GUI.
+        event.enqueueWork(() ->
+            DisplaySource.BY_BLOCK_ENTITY.register(
+                HEAT_GAUGE_BLOCK_ENTITY.get(),
+                List.of(HEAT_GAUGE_DISPLAY_SOURCE.get())
+            )
+        );
 
         if (Config.LOG_DIRT_BLOCK.getAsBoolean()) {
             LOGGER.info("DIRT BLOCK >> {}", BuiltInRegistries.BLOCK.getKey(Blocks.DIRT));

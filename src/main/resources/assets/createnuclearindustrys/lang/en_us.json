@@ -36,6 +36,8 @@
   "block.createnuclearindustrys.thermal_generator.tooltip.condition2": "At Peak Temperature",
   "block.createnuclearindustrys.thermal_generator.tooltip.behaviour2": "Keep the reactor fuelled and _coolant flowing_ to sustain output.",
 
+  "display_source.createnuclearindustrys.heat_gauge_temperature": "Heat Gauge Temperature",
+
   "effect.createnuclearindustrys.radiation_sickness": "Radiation Sickness",
 
   "fluid_type.createnuclearindustrys.steam": "Steam",

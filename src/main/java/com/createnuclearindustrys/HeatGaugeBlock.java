@@ -5,6 +5,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
@@ -34,5 +35,30 @@ public class HeatGaugeBlock extends Block implements EntityBlock {
         player.sendSystemMessage(Component.literal(String.format("[Heat Gauge] %.1f°C", heat)));
 
         return InteractionResult.SUCCESS;
+    }
+
+    // ── Analog redstone output ────────────────────────────────────────────────
+
+    /** The Heat Gauge emits a comparator/redstone signal proportional to its heat. */
+    @Override
+    protected boolean isSignalSource(BlockState state) {
+        return true;
+    }
+
+    /**
+     * Returns 0–15 linearly mapped to 0°C – 1000°C (meltdown temperature).
+     * A comparator placed next to the gauge will read this value directly.
+     */
+    @Override
+    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+        if (level.getBlockEntity(pos) instanceof HeatGaugeBlockEntity be)
+            return Math.min(15, (int)(be.heat / 1000f * 15));
+        return 0;
+    }
+
+    /** Needed alongside isSignalSource so the game knows to call getAnalogOutputSignal. */
+    @Override
+    protected boolean hasAnalogOutputSignal(BlockState state) {
+        return true;
     }
 }

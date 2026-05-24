@@ -115,11 +115,16 @@ public class RadiationManager extends SavedData {
         }
         if (!melted.isEmpty()) setDirty();
 
-        // Thermal generators actively drain heat from the network (heat → rotation)
+        // Thermal generators actively drain heat from the network (heat → rotation + steam).
+        // If the generator has no water it can't convert heat, so it neither cools the network
+        // nor produces any rotation — making water supply act as the critical control variable.
         for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
             if (!(level.getBlockState(entry.getKey()).getBlock() instanceof ThermalGeneratorBlock)) continue;
             float heat = entry.getValue();
             if (heat <= 10f) continue;
+            // Gate: only drain heat when the generator is actually converting water to steam
+            if (!(level.getBlockEntity(entry.getKey()) instanceof ThermalGeneratorBlockEntity tbe)
+                    || !tbe.hasWater()) continue;
             entry.setValue(Math.max(0f, heat - heat * 0.005f));
         }
 

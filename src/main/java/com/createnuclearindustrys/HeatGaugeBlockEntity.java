@@ -22,10 +22,22 @@ public class HeatGaugeBlockEntity extends BlockEntity implements IHaveGoggleInfo
 
     public void setHeat(float newHeat) {
         if (Math.abs(heat - newHeat) < 0.1f) return;
+
+        // Detect if the redstone signal strength (0–15) would change so we only
+        // notify neighbors when the value actually crosses a step boundary.
+        int oldSignal = Math.min(15, (int)(heat    / 1000f * 15));
+        int newSignal = Math.min(15, (int)(newHeat / 1000f * 15));
+
         heat = newHeat;
         setChanged();
-        if (level != null && !level.isClientSide())
+
+        if (level != null && !level.isClientSide()) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+
+            // Push a neighbor update so comparators and redstone wires see the new signal
+            if (oldSignal != newSignal)
+                level.updateNeighborsAt(worldPosition, getBlockState().getBlock());
+        }
     }
 
     @Override
