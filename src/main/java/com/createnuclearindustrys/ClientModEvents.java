@@ -22,6 +22,7 @@ public class ClientModEvents {
             registerTooltip(CreateNuclearIndustrys.HEAT_GAUGE_ITEM.get());
             registerTooltip(CreateNuclearIndustrys.HEAT_PIPE_ITEM.get());
             registerTooltip(CreateNuclearIndustrys.STEAM_TURBINE_ITEM.get());
+            registerTooltip(CreateNuclearIndustrys.BOILER_ITEM.get());
         });
     }
 

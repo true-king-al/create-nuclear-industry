@@ -15,7 +15,7 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 public class CommonModEvents {
 
     /**
-     * Register the Thermal Generator's fluid handler capability so Create pipes
+     * Register the Steam Turbine's and Boiler's fluid handler capabilities so Create pipes
      * (and any other mod using Capabilities.FluidHandler.BLOCK) can pump water in
      * and steam out automatically.
      */
