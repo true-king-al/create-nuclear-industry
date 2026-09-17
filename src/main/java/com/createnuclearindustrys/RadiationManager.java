@@ -63,6 +63,13 @@ public class RadiationManager extends SavedData {
         return rodHeat.getOrDefault(pos, 0f);
     }
 
+    public void forceSetHeat(BlockPos pos, int value) {
+        BlockPos key = pos.immutable();
+        if (!rods.contains(key)) registerRod(key);
+        rodHeat.put(key, (float) value);
+        setDirty();
+    }
+
     public List<RadiationParticle> drainPendingBroadcast() {
         if (pendingBroadcast.isEmpty()) return List.of();
         List<RadiationParticle> out = new ArrayList<>(pendingBroadcast);
@@ -115,16 +122,13 @@ public class RadiationManager extends SavedData {
         }
         if (!melted.isEmpty()) setDirty();
 
-        // Thermal generators actively drain heat from the network (heat → rotation + steam).
-        // If the generator has no water it can't convert heat, so it neither cools the network
-        // nor produces any rotation — making water supply act as the critical control variable.
+        // Boilers drain heat while converting water to steam (no kinetic output).
         for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
-            if (!(level.getBlockState(entry.getKey()).getBlock() instanceof ThermalGeneratorBlock)) continue;
+            if (!(level.getBlockState(entry.getKey()).getBlock() instanceof BoilerBlock)) continue;
             float heat = entry.getValue();
-            if (heat <= 10f) continue;
-            // Gate: only drain heat when the generator is actually converting water to steam
-            if (!(level.getBlockEntity(entry.getKey()) instanceof ThermalGeneratorBlockEntity tbe)
-                    || !tbe.hasWater()) continue;
+            if (heat < 100f) continue;
+            if (!(level.getBlockEntity(entry.getKey()) instanceof BoilerBlockEntity bbe)
+                    || !bbe.hasWater()) continue;
             entry.setValue(Math.max(0f, heat - heat * 0.005f));
         }
 
@@ -159,6 +163,14 @@ public class RadiationManager extends SavedData {
             }
         }
 
+        // Re-pin creative heat sources after conduction so they always output their target temp
+        for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
+            if (level.getBlockState(entry.getKey()).getBlock() instanceof CreativeHeatSourceBlock
+                    && level.getBlockEntity(entry.getKey()) instanceof CreativeHeatSourceBlockEntity cbe) {
+                entry.setValue((float) cbe.targetTemperature.value);
+            }
+        }
+
         // Sync heat_level block state to clients (drives light + tint)
         for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
             BlockPos pos = entry.getKey();
@@ -171,9 +183,9 @@ public class RadiationManager extends SavedData {
             } else if (current.getBlock() instanceof HeatGaugeBlock
                     && level.getBlockEntity(pos) instanceof HeatGaugeBlockEntity be) {
                 be.setHeat(heat);
-            } else if (current.getBlock() instanceof ThermalGeneratorBlock
-                    && level.getBlockEntity(pos) instanceof ThermalGeneratorBlockEntity tbe) {
-                tbe.setHeat(heat);
+            } else if (current.getBlock() instanceof BoilerBlock
+                    && level.getBlockEntity(pos) instanceof BoilerBlockEntity bbe) {
+                bbe.setHeat(heat);
             }
         }
 
@@ -250,7 +262,7 @@ public class RadiationManager extends SavedData {
 
     private static boolean isHeatNode(Block b) {
         return b instanceof UraniumFuelRod || b instanceof HeatGaugeBlock
-                || b instanceof HeatPipeBlock || b instanceof ThermalGeneratorBlock;
+                || b instanceof HeatPipeBlock || b instanceof BoilerBlock || b instanceof CreativeHeatSourceBlock;
     }
 
     public void emitFromOre(BlockPos pos) {

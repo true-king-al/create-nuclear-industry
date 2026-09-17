@@ -1,5 +1,7 @@
 package com.createnuclearindustrys;
 
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.DirectionalBlock;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -21,7 +23,19 @@ public class CommonModEvents {
     public static void onRegisterCapabilities(RegisterCapabilitiesEvent event) {
         event.registerBlockEntity(
                 Capabilities.FluidHandler.BLOCK,
-                CreateNuclearIndustrys.THERMAL_GENERATOR_BLOCK_ENTITY.get(),
+                CreateNuclearIndustrys.STEAM_TURBINE_BLOCK_ENTITY.get(),
+                (be, side) -> {
+                    if (side == null) return be.getOutputHandler();
+                    Direction facing = be.getBlockState().getValue(DirectionalBlock.FACING);
+                    // Back face = steam inlet (fill-only)
+                    if (side == facing.getOpposite()) return be.getInputHandler();
+                    // All other faces = steam outlet (drain-only)
+                    return be.getOutputHandler();
+                }
+        );
+        event.registerBlockEntity(
+                Capabilities.FluidHandler.BLOCK,
+                CreateNuclearIndustrys.BOILER_BLOCK_ENTITY.get(),
                 (be, side) -> be.getFluidHandler()
         );
     }

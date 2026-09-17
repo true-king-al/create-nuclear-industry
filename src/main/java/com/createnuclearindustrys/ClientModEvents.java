@@ -21,7 +21,7 @@ public class ClientModEvents {
             registerTooltip(CreateNuclearIndustrys.URANIUM_FUEL_ROD_ITEM.get());
             registerTooltip(CreateNuclearIndustrys.HEAT_GAUGE_ITEM.get());
             registerTooltip(CreateNuclearIndustrys.HEAT_PIPE_ITEM.get());
-            registerTooltip(CreateNuclearIndustrys.THERMAL_GENERATOR_ITEM.get());
+            registerTooltip(CreateNuclearIndustrys.STEAM_TURBINE_ITEM.get());
         });
     }
 
@@ -38,7 +38,7 @@ public class ClientModEvents {
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(
-                CreateNuclearIndustrys.THERMAL_GENERATOR_BLOCK_ENTITY.get(),
-                ThermalGeneratorRenderer::new);
+                CreateNuclearIndustrys.STEAM_TURBINE_BLOCK_ENTITY.get(),
+                SteamTurbineRenderer::new);
     }
 }

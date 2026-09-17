@@ -129,12 +129,26 @@ public class CreateNuclearIndustrys {
     public static final DeferredItem<Item> ENRICHED_URANIUM_NUGGET = ITEMS.registerSimpleItem("enriched_uranium_nugget", new Item.Properties());
     public static final DeferredItem<Item> ENRICHED_URANIUM = ITEMS.registerSimpleItem("enriched_uranium", new Item.Properties());
 
-    public static final DeferredBlock<ThermalGeneratorBlock> THERMAL_GENERATOR = BLOCKS.registerBlock("thermal_generator",
-            ThermalGeneratorBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(3.0f, 8.0f).requiresCorrectToolForDrops().noOcclusion());
-    public static final DeferredItem<BlockItem> THERMAL_GENERATOR_ITEM = ITEMS.registerSimpleBlockItem("thermal_generator", THERMAL_GENERATOR);
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ThermalGeneratorBlockEntity>> THERMAL_GENERATOR_BLOCK_ENTITY =
-            BLOCK_ENTITY_TYPES.register("thermal_generator", () -> BlockEntityType.Builder.of(
-                    ThermalGeneratorBlockEntity::new, THERMAL_GENERATOR.get()).build(null));
+    public static final DeferredBlock<SteamTurbineBlock> STEAM_TURBINE = BLOCKS.registerBlock("steam_turbine",
+            SteamTurbineBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GRAY).strength(3.0f, 8.0f).requiresCorrectToolForDrops().noOcclusion());
+    public static final DeferredItem<BlockItem> STEAM_TURBINE_ITEM = ITEMS.registerSimpleBlockItem("steam_turbine", STEAM_TURBINE);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SteamTurbineBlockEntity>> STEAM_TURBINE_BLOCK_ENTITY =
+            BLOCK_ENTITY_TYPES.register("steam_turbine", () -> BlockEntityType.Builder.of(
+                    SteamTurbineBlockEntity::new, STEAM_TURBINE.get()).build(null));
+
+    public static final DeferredBlock<BoilerBlock> BOILER = BLOCKS.registerBlock("boiler",
+            BoilerBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.QUARTZ).strength(3.0f, 8.0f).requiresCorrectToolForDrops());
+    public static final DeferredItem<BlockItem> BOILER_ITEM = ITEMS.registerSimpleBlockItem("boiler", BOILER);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<BoilerBlockEntity>> BOILER_BLOCK_ENTITY =
+            BLOCK_ENTITY_TYPES.register("boiler", () -> BlockEntityType.Builder.of(
+                    BoilerBlockEntity::new, BOILER.get()).build(null));
+
+    public static final DeferredBlock<CreativeHeatSourceBlock> CREATIVE_HEAT_SOURCE = BLOCKS.registerBlock("creative_heat_source",
+            CreativeHeatSourceBlock::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_PURPLE).strength(-1.0f, 3600000.0f).requiresCorrectToolForDrops());
+    public static final DeferredItem<BlockItem> CREATIVE_HEAT_SOURCE_ITEM = ITEMS.registerSimpleBlockItem("creative_heat_source", CREATIVE_HEAT_SOURCE);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<CreativeHeatSourceBlockEntity>> CREATIVE_HEAT_SOURCE_BLOCK_ENTITY =
+            BLOCK_ENTITY_TYPES.register("creative_heat_source", () -> BlockEntityType.Builder.of(
+                    CreativeHeatSourceBlockEntity::new, CREATIVE_HEAT_SOURCE.get()).build(null));
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.createnuclearindustrys")) //The language key for the title of your CreativeModeTab
@@ -149,7 +163,9 @@ public class CreateNuclearIndustrys {
                 output.accept(BORON_CONTROL_ROD_ITEM.get());
                 output.accept(HEAT_GAUGE_ITEM.get());
                 output.accept(HEAT_PIPE_ITEM.get());
-                output.accept(THERMAL_GENERATOR_ITEM.get());
+                output.accept(STEAM_TURBINE_ITEM.get());
+                output.accept(BOILER_ITEM.get());
+                output.accept(CREATIVE_HEAT_SOURCE_ITEM.get());
                 output.accept(STEAM_BUCKET.get());
             }).build());
 

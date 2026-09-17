@@ -6,7 +6,9 @@
   "block.createnuclearindustrys.boron_control_rod": "Boron Control Rod",
   "block.createnuclearindustrys.heat_gauge": "Heat Gauge",
   "block.createnuclearindustrys.heat_pipe": "Heat Pipe",
-  "block.createnuclearindustrys.thermal_generator": "Thermal Generator",
+  "block.createnuclearindustrys.steam_turbine": "Steam Turbine",
+  "block.createnuclearindustrys.boiler": "Boiler",
+  "block.createnuclearindustrys.creative_heat_source": "Creative Heat Source",
 
   "item.createnuclearindustrys.uranium_ore": "Uranium Ore",
   "item.createnuclearindustrys.enriched_uranium_nugget": "Enriched Uranium Nugget",
@@ -30,11 +32,11 @@
   "block.createnuclearindustrys.heat_pipe.tooltip.condition1": "When Connected to Heat Sources",
   "block.createnuclearindustrys.heat_pipe.tooltip.behaviour1": "Gradually _equalises heat_ across all connected nodes. Route energy from a _reactor_ to a _Thermal Generator_ using pipes.",
 
-  "block.createnuclearindustrys.thermal_generator.tooltip.summary": "Converts _heat energy_ into _rotational force_.",
-  "block.createnuclearindustrys.thermal_generator.tooltip.condition1": "When Connected to Heat Network",
-  "block.createnuclearindustrys.thermal_generator.tooltip.behaviour1": "Outputs a spinning _shaft_ once the network temperature exceeds 10°. Speed and _stress capacity_ scale with heat level.",
-  "block.createnuclearindustrys.thermal_generator.tooltip.condition2": "At Peak Temperature",
-  "block.createnuclearindustrys.thermal_generator.tooltip.behaviour2": "Keep the reactor fuelled and _coolant flowing_ to sustain output.",
+  "block.createnuclearindustrys.steam_turbine.tooltip.summary": "Converts _steam throughput_ into _rotational force_.",
+  "block.createnuclearindustrys.steam_turbine.tooltip.condition1": "When Steam Flows Through",
+  "block.createnuclearindustrys.steam_turbine.tooltip.behaviour1": "Accepts steam into its input side and expels _slightly less steam_ from its output. The more steam flowing through, the greater the _stress capacity_.",
+  "block.createnuclearindustrys.steam_turbine.tooltip.condition2": "Maximising Output",
+  "block.createnuclearindustrys.steam_turbine.tooltip.behaviour2": "Pump steam in _and_ drain it out simultaneously for maximum throughput and power.",
 
   "display_source.createnuclearindustrys.heat_gauge_temperature": "Heat Gauge Temperature",
 

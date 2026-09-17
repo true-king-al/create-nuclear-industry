@@ -2,8 +2,8 @@
   "parent": "block/block",
   "textures": {
     "particle": "#side",
-    "side": "createnuclearindustrys:block/thermal_generator_side",
-    "top":  "createnuclearindustrys:block/thermal_generator_top"
+    "side": "createnuclearindustrys:block/steam_turbine_side",
+    "top":  "createnuclearindustrys:block/steam_turbine_top"
   },
   "elements": [
     {

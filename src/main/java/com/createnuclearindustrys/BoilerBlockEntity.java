@@ -1,0 +1,119 @@
+package com.createnuclearindustrys;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.Fluids;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.templates.FluidTank;
+
+public class BoilerBlockEntity extends BlockEntity {
+
+    private static final int WATER_CAPACITY = 4000;
+    private static final int STEAM_CAPACITY  = 8000;
+    private static final float MIN_HEAT = 100f;
+
+    float heat = 0f;
+
+    private final FluidTank waterTank = new FluidTank(WATER_CAPACITY, stack -> stack.is(Fluids.WATER));
+    private final FluidTank steamTank = new FluidTank(STEAM_CAPACITY);
+
+    private final IFluidHandler combinedHandler = new IFluidHandler() {
+        @Override public int getTanks() { return 2; }
+
+        @Override
+        public FluidStack getFluidInTank(int tank) {
+            return tank == 0 ? waterTank.getFluid() : steamTank.getFluid();
+        }
+
+        @Override
+        public int getTankCapacity(int tank) {
+            return tank == 0 ? waterTank.getCapacity() : steamTank.getCapacity();
+        }
+
+        @Override
+        public boolean isFluidValid(int tank, FluidStack stack) {
+            return tank == 0 && waterTank.isFluidValid(stack);
+        }
+
+        @Override
+        public int fill(FluidStack resource, FluidAction action) {
+            int filled = waterTank.fill(resource, action);
+            if (filled > 0 && action.execute()) setChanged();
+            return filled;
+        }
+
+        @Override
+        public FluidStack drain(FluidStack resource, FluidAction action) {
+            FluidStack drained = steamTank.drain(resource, action);
+            if (!drained.isEmpty() && action.execute()) setChanged();
+            return drained;
+        }
+
+        @Override
+        public FluidStack drain(int maxDrain, FluidAction action) {
+            FluidStack drained = steamTank.drain(maxDrain, action);
+            if (!drained.isEmpty() && action.execute()) setChanged();
+            return drained;
+        }
+    };
+
+    public BoilerBlockEntity(BlockPos pos, BlockState state) {
+        super(CreateNuclearIndustrys.BOILER_BLOCK_ENTITY.get(), pos, state);
+    }
+
+    public void tick() {
+        if (level == null || level.isClientSide() || heat < MIN_HEAT || waterTank.isEmpty()) return;
+
+        // Scale linearly: 1 mB water/tick at 100°C, up to 10 mB water/tick at 1000°C
+        int waterPerTick = (int) (heat / 100f);
+        FluidStack consumed = waterTank.drain(waterPerTick, IFluidHandler.FluidAction.EXECUTE);
+        if (!consumed.isEmpty()) {
+            steamTank.fill(
+                new FluidStack(CreateNuclearIndustrys.STEAM_STILL.get(), consumed.getAmount() * 10),
+                IFluidHandler.FluidAction.EXECUTE
+            );
+            setChanged();
+        }
+    }
+
+    public void setHeat(float newHeat) {
+        if (Math.abs(heat - newHeat) < 0.5f) return;
+        heat = newHeat;
+        setChanged();
+    }
+
+    public boolean hasWater() { return !waterTank.isEmpty(); }
+
+    public IFluidHandler getFluidHandler() { return combinedHandler; }
+
+    @Override
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
+        tag.putFloat("heat", heat);
+        tag.put("waterTank", waterTank.writeToNBT(registries, new CompoundTag()));
+        tag.put("steamTank",  steamTank.writeToNBT(registries, new CompoundTag()));
+    }
+
+    @Override
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
+        heat = tag.getFloat("heat");
+        if (tag.contains("waterTank")) waterTank.readFromNBT(registries, tag.getCompound("waterTank"));
+        if (tag.contains("steamTank"))  steamTank.readFromNBT(registries,  tag.getCompound("steamTank"));
+    }
+
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        return saveWithoutMetadata(registries);
+    }
+
+    @Override
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+}
