@@ -14,13 +14,23 @@ import java.util.List;
 
 public class SteamTurbineBlockEntity extends GeneratingKineticBlockEntity {
 
-    private static final float MAX_SU = 512f;
+    private static final float SPEED = 16f;
+    // Stress capacity at full steam flow (MAX_THROUGHPUT), in SU as shown on a stressometer
+    private static final float MAX_SU = 10000f;
     // Max steam processed per tick; actual throughput is pipe-limited
     private static final int MAX_THROUGHPUT = 100;
     // Fraction of steam consumed to generate power; the rest exits the output tank
     private static final float CONSUMPTION_RATIO = 0.10f;
 
     private static final int TANK_CAPACITY = 4000;
+
+    // Steam flow is averaged over the last 100 ticks (5 s) so capacity follows heat smoothly
+    // instead of jumping with pipe deliveries
+    private static final int FLOW_WINDOW = 100;
+    // Below this average flow (mB/tick) the turbine stops spinning
+    private static final float MIN_FLOW = 0.5f;
+    // Skip network updates for capacity changes smaller than this (per RPM; ×16 = 1.6 SU)
+    private static final float CAPACITY_EPSILON = 0.1f;
 
     /** Steam fed in by pipes. */
     private final FluidTank steamInputTank = new FluidTank(TANK_CAPACITY,
@@ -69,9 +79,14 @@ public class SteamTurbineBlockEntity extends GeneratingKineticBlockEntity {
         }
     };
 
-    // How much steam was consumed this tick — determines stress capacity
-    private int steamConsumedThisTick = 0;
-    private int prevConsumed = -1;
+    // Steam processed each tick over the last FLOW_WINDOW ticks (ring buffer) and its running sum
+    private final int[] flowHistory = new int[FLOW_WINDOW];
+    private int flowIndex = 0;
+    private int flowSum = 0;
+    // Average steam processed per tick (mB) — determines stress capacity
+    private float steamFlow = 0f;
+    private boolean active = false;
+    private float lastCapacity = 0f;
 
     public SteamTurbineBlockEntity(BlockPos pos, BlockState state) {
         super(CreateNuclearIndustrys.STEAM_TURBINE_BLOCK_ENTITY.get(), pos, state);
@@ -84,12 +99,14 @@ public class SteamTurbineBlockEntity extends GeneratingKineticBlockEntity {
 
     @Override
     public float getGeneratedSpeed() {
-        return steamConsumedThisTick > 0 ? 16f : 0f;
+        return active ? SPEED : 0f;
     }
 
     @Override
     public float calculateAddedStressCapacity() {
-        return ((float) steamConsumedThisTick / MAX_THROUGHPUT) * MAX_SU;
+        if (!active) return 0f;
+        // Create multiplies this by RPM, so divide by SPEED to land on MAX_SU at full flow
+        return (steamFlow / MAX_THROUGHPUT) * MAX_SU / SPEED;
     }
 
     // ── Per-tick processing ───────────────────────────────────────────────────
@@ -100,11 +117,11 @@ public class SteamTurbineBlockEntity extends GeneratingKineticBlockEntity {
         if (level == null || level.isClientSide()) return;
 
         int available = Math.min(MAX_THROUGHPUT, steamInputTank.getFluidAmount());
-        int consumed = 0;
+        int processed = 0;
 
         if (available > 0 && steamOutputTank.getFluidAmount() < TANK_CAPACITY) {
             int passThrough = (int) (available * (1f - CONSUMPTION_RATIO));
-            consumed = available - passThrough;
+            processed = available;
 
             steamInputTank.drain(available, IFluidHandler.FluidAction.EXECUTE);
             if (passThrough > 0)
@@ -114,23 +131,26 @@ public class SteamTurbineBlockEntity extends GeneratingKineticBlockEntity {
             setChanged();
         }
 
-        steamConsumedThisTick = consumed;
+        flowSum += processed - flowHistory[flowIndex];
+        flowHistory[flowIndex] = processed;
+        flowIndex = (flowIndex + 1) % FLOW_WINDOW;
+        steamFlow = (float) flowSum / FLOW_WINDOW;
+        boolean isActive = steamFlow >= MIN_FLOW;
 
-        if (consumed != prevConsumed) {
-            boolean wasActive = prevConsumed > 0;
-            boolean isActive  = consumed > 0;
-            prevConsumed = consumed;
-
-            if (isActive != wasActive) {
-                // Speed crossing zero — updateGeneratedRotation handles the full network
-                // rebuild. Calling notifyStressCapacityChange on the same tick would
-                // reach connected block entities (e.g. stress gauge) before their network
-                // keys are restored, causing a NPE inside Create's KineticNetwork.
-                updateGeneratedRotation();
-            } else if (hasNetwork()) {
-                // Speed unchanged (both ticks non-zero), network is stable —
-                // just update the capacity value.
-                notifyStressCapacityChange(calculateAddedStressCapacity());
+        if (isActive != active) {
+            active = isActive;
+            lastCapacity = calculateAddedStressCapacity();
+            // Speed crossing zero — updateGeneratedRotation handles the full network
+            // rebuild. Calling notifyStressCapacityChange on the same tick would
+            // reach connected block entities (e.g. stress gauge) before their network
+            // keys are restored, causing a NPE inside Create's KineticNetwork.
+            updateGeneratedRotation();
+        } else if (active && hasNetwork()) {
+            // Speed unchanged, network is stable — just update the capacity value.
+            float capacity = calculateAddedStressCapacity();
+            if (Math.abs(capacity - lastCapacity) >= CAPACITY_EPSILON) {
+                lastCapacity = capacity;
+                notifyStressCapacityChange(capacity);
             }
         }
     }

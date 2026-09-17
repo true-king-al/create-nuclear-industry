@@ -18,6 +18,8 @@ public class BoilerBlockEntity extends BlockEntity {
     private static final float MIN_HEAT = 100f;
 
     float heat = 0f;
+    // Fraction of a mB of water carried between ticks so the boil rate follows heat exactly
+    private float waterOwed = 0f;
 
     private final FluidTank waterTank = new FluidTank(WATER_CAPACITY, stack -> stack.is(Fluids.WATER));
     private final FluidTank steamTank = new FluidTank(STEAM_CAPACITY);
@@ -69,8 +71,11 @@ public class BoilerBlockEntity extends BlockEntity {
     public void tick() {
         if (level == null || level.isClientSide() || heat < MIN_HEAT || waterTank.isEmpty()) return;
 
-        // Scale linearly: 1 mB water/tick at 100°C, up to 10 mB water/tick at 1000°C
-        int waterPerTick = (int) (heat / 100f);
+        // Scale linearly: 1 mB water/tick per 100°C, fractions carried over (287°C averages 2.87 mB/tick)
+        waterOwed += heat / 100f;
+        int waterPerTick = (int) waterOwed;
+        if (waterPerTick == 0) return;
+        waterOwed -= waterPerTick;
         FluidStack consumed = waterTank.drain(waterPerTick, IFluidHandler.FluidAction.EXECUTE);
         if (!consumed.isEmpty()) {
             steamTank.fill(
