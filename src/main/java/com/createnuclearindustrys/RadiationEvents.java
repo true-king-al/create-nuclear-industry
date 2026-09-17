@@ -40,7 +40,7 @@ public class RadiationEvents {
         if (placed instanceof UraniumFuelRod || placed instanceof HeatGaugeBlock
                 || placed instanceof HeatPipeBlock
                 || placed instanceof BoilerBlock || placed instanceof CreativeHeatSourceBlock) {
-            RadiationManager.get(serverLevel).registerRod(event.getPos());
+            RadiationManager.get(serverLevel).registerRod(event.getPos(), serverLevel);
         }
     }
 

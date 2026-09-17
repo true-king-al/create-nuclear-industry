@@ -31,6 +31,8 @@ public class RadiationManager extends SavedData {
     private final Map<UUID, RadiationParticle> particles = new LinkedHashMap<>();
     private final Set<BlockPos> rods = new HashSet<>();
     private final Map<BlockPos, Float> rodHeat = new HashMap<>();
+    // Biome ambient temperature per node; not saved, recomputed on demand
+    private final Map<BlockPos, Float> ambientHeat = new HashMap<>();
     private final RandomSource rng = RandomSource.create();
     private final List<RadiationParticle> pendingBroadcast = new ArrayList<>();
 
@@ -41,16 +43,50 @@ public class RadiationManager extends SavedData {
         );
     }
 
-    public void registerRod(BlockPos pos) {
+    public void registerRod(BlockPos pos, ServerLevel level) {
+        registerRod(pos, getAmbientHeat(level, pos));
+    }
+
+    private void registerRod(BlockPos pos, float startHeat) {
         rods.add(pos.immutable());
-        rodHeat.put(pos.immutable(), 0f);
+        rodHeat.put(pos.immutable(), startHeat);
         setDirty();
+    }
+
+    /**
+     * Registers a heat node that arrived here by being moved (piston, contraption, falling block,
+     * /setblock). Gauges and boilers get their heat back from the network on the next tick.
+     */
+    public void registerMovedNode(ServerLevel level, BlockPos pos) {
+        if (rods.contains(pos)) return;
+        registerRod(pos, getAmbientHeat(level, pos));
+    }
+
+    /**
+     * Registers a rod that arrived here by being moved.
+     * Its heat is carried over approximately from the heat_level block state.
+     */
+    public void registerMovedRod(ServerLevel level, BlockPos pos, int heatLevel) {
+        if (rods.contains(pos)) return;
+        float ambient = getAmbientHeat(level, pos);
+        // heat_level 0 covers everything below ~67°C, so ambient is the best estimate there
+        registerRod(pos, heatLevel == 0 ? ambient : Math.max(ambient, heatLevel / 15f * MELTDOWN_TEMP));
     }
 
     public void removeRod(BlockPos pos, ServerLevel level) {
         rods.remove(pos);
         rodHeat.remove(pos);
+        ambientHeat.remove(pos);
         setDirty();
+    }
+
+    /**
+     * Ambient temperature in °C from the biome. Vanilla freezes water below a biome temperature
+     * of 0.15, so that maps to 0°C; plains (0.8) maps to 20°C and deserts (2.0) to ~57°C.
+     */
+    private float getAmbientHeat(ServerLevel level, BlockPos pos) {
+        return ambientHeat.computeIfAbsent(pos.immutable(),
+                p -> (level.getBiome(p).value().getBaseTemperature() - 0.15f) * (20f / 0.65f));
     }
 
     public void addHeat(BlockPos pos, float amount) {
@@ -65,7 +101,7 @@ public class RadiationManager extends SavedData {
 
     public void forceSetHeat(BlockPos pos, int value) {
         BlockPos key = pos.immutable();
-        if (!rods.contains(key)) registerRod(key);
+        if (!rods.contains(key)) registerRod(key, (float) value);
         rodHeat.put(key, (float) value);
         setDirty();
     }
@@ -102,23 +138,25 @@ public class RadiationManager extends SavedData {
                     toRegister.add(neighbor.immutable());
             }
         }
-        for (BlockPos pos : toRegister) registerRod(pos);
+        for (BlockPos pos : toRegister) registerRod(pos, level);
 
-        // Dissipate heat; uranium rods melt at 1000°C, everything else just caps
+        // Dissipate heat toward ambient; uranium rods melt at 1000°C, everything else just caps
         List<BlockPos> melted = new ArrayList<>();
         for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
             float heat = entry.getValue();
             if (heat >= MELTDOWN_TEMP) {
                 if (level.getBlockState(entry.getKey()).getBlock() instanceof UraniumFuelRod)
                     melted.add(entry.getKey());
-            } else if (heat > 0f) {
-                entry.setValue(heat * 0.999f);
+            } else {
+                float ambient = getAmbientHeat(level, entry.getKey());
+                entry.setValue(ambient + (heat - ambient) * 0.999f);
             }
         }
         for (BlockPos pos : melted) {
             triggerMeltdown(pos, level);
             rods.remove(pos);
             rodHeat.remove(pos);
+            ambientHeat.remove(pos);
         }
         if (!melted.isEmpty()) setDirty();
 
@@ -177,7 +215,7 @@ public class RadiationManager extends SavedData {
             float heat = entry.getValue();
             BlockState current = level.getBlockState(pos);
             if (current.getBlock() instanceof UraniumFuelRod) {
-                int newLevel = Math.min(15, (int)(heat / MELTDOWN_TEMP * 15));
+                int newLevel = Math.max(0, Math.min(15, (int)(heat / MELTDOWN_TEMP * 15)));
                 if (current.getValue(UraniumFuelRod.HEAT_LEVEL) != newLevel)
                     level.setBlock(pos, current.setValue(UraniumFuelRod.HEAT_LEVEL, newLevel), 2);
             } else if (current.getBlock() instanceof HeatGaugeBlock
@@ -193,7 +231,7 @@ public class RadiationManager extends SavedData {
         for (BlockPos rod : new ArrayList<>(rods)) {
             if (!level.isLoaded(rod)) continue;
             if (!(level.getBlockState(rod).getBlock() instanceof UraniumFuelRod)) continue;
-            float heatFrac = Math.min(1f, rodHeat.getOrDefault(rod, 0f) / MELTDOWN_TEMP);
+            float heatFrac = Math.max(0f, Math.min(1f, rodHeat.getOrDefault(rod, 0f) / MELTDOWN_TEMP));
             // interval shrinks from 10 (cold) down to 1 (at meltdown temp) — 10× more particles
             int interval = Math.max(1, (int)(EMIT_INTERVAL * (1f - heatFrac * 0.9f)));
             if (rng.nextInt(interval) != 0) continue;
@@ -311,10 +349,12 @@ public class RadiationManager extends SavedData {
 
         if (BlockPos.containing(p.pos).equals(p.source)) { p.pos = next; return; }
 
-        // Check if the particle passes through a player — if so, give them radiation sickness
+        // Check if the particle passes through a player — if so, give them radiation sickness.
+        // Creative and spectator players are immune; particles pass straight through them.
         AABB particleHitbox = new AABB(next.x - 0.4, next.y - 0.4, next.z - 0.4,
                                        next.x + 0.4, next.y + 0.4, next.z + 0.4);
-        List<Player> players = level.getEntitiesOfClass(Player.class, particleHitbox);
+        List<Player> players = level.getEntitiesOfClass(Player.class, particleHitbox,
+                player -> !player.isCreative() && !player.isSpectator());
         if (!players.isEmpty()) {
             applyRadiationSickness(players.get(0));
             p.ticksLeft = 0; // absorbed by the player's body
