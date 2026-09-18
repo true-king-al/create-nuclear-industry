@@ -113,7 +113,7 @@ public class CreateNuclearIndustrys {
 
     public static final DeferredBlock<UraniumFuelRod> URANIUM_FUEL_ROD = BLOCKS.registerBlock("uranium_fuel_rod",
             UraniumFuelRod::new, BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_GREEN).strength(1.5f, 6.0f).requiresCorrectToolForDrops().noOcclusion()
-                    .lightLevel(state -> state.getValue(UraniumFuelRod.HEAT_LEVEL)));
+                    .lightLevel(UraniumFuelRod::lightLevel));
     public static final DeferredItem<BlockItem> URANIUM_FUEL_ROD_ITEM = ITEMS.registerSimpleBlockItem("uranium_fuel_rod", URANIUM_FUEL_ROD);
 
     public static final DeferredBlock<HeatPipeBlock> HEAT_PIPE = BLOCKS.registerBlock("heat_pipe",

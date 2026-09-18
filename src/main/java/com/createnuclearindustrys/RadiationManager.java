@@ -16,6 +16,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.level.saveddata.SavedData;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -27,6 +29,14 @@ public class RadiationManager extends SavedData {
     private static final String DATA_ID = CreateNuclearIndustrys.MODID + "_radiation";
     private static final int EMIT_INTERVAL = 10;
     private static final float MELTDOWN_TEMP = 1000f;
+    // Water moderates: particles slowed by water are absorbed far more effectively than fast ones
+    private static final float MODERATED_HEAT = 2.0f;
+    private static final float UNMODERATED_HEAT = 0.5f;
+    // Water also cools: a submerged rod sheds heat about 3x faster than one in air.
+    // Kept mild on purpose — moderation has to win, or a submerged reactor never reaches
+    // the boiler's 100C and makes no power.
+    private static final float COOLING_IN_AIR = 0.999f;
+    private static final float COOLING_IN_WATER = 0.997f;
 
     private final Map<UUID, RadiationParticle> particles = new LinkedHashMap<>();
     private final Set<BlockPos> rods = new HashSet<>();
@@ -69,8 +79,12 @@ public class RadiationManager extends SavedData {
     public void registerMovedRod(ServerLevel level, BlockPos pos, int heatLevel) {
         if (rods.contains(pos)) return;
         float ambient = getAmbientHeat(level, pos);
-        // heat_level 0 covers everything below ~67°C, so ambient is the best estimate there
-        registerRod(pos, heatLevel == 0 ? ambient : Math.max(ambient, heatLevel / 15f * MELTDOWN_TEMP));
+        // heat_level 0 covers everything below ~67°C, so ambient is the best estimate there.
+        // Capped below meltdown: a rod must never arrive somewhere already melting, or a rod
+        // thrown clear by one meltdown lands and detonates again, forever.
+        float carried = heatLevel == 0 ? ambient
+                : Math.min(MELTDOWN_TEMP * 0.9f, Math.max(ambient, heatLevel / 15f * MELTDOWN_TEMP));
+        registerRod(pos, carried);
     }
 
     public void removeRod(BlockPos pos, ServerLevel level) {
@@ -149,7 +163,9 @@ public class RadiationManager extends SavedData {
                     melted.add(entry.getKey());
             } else {
                 float ambient = getAmbientHeat(level, entry.getKey());
-                entry.setValue(ambient + (heat - ambient) * 0.999f);
+                float cooling = isWaterlogged(level.getBlockState(entry.getKey()))
+                        ? COOLING_IN_WATER : COOLING_IN_AIR;
+                entry.setValue(ambient + (heat - ambient) * cooling);
             }
         }
         for (BlockPos pos : melted) {
@@ -239,6 +255,7 @@ public class RadiationManager extends SavedData {
             // Near criticality: burst a second particle
             if (heatFrac > 0.8f && rng.nextFloat() < (heatFrac - 0.8f) * 5f)
                 emitFromRod(rod);
+
         }
 
         List<UUID> dead = new ArrayList<>();
@@ -272,9 +289,11 @@ public class RadiationManager extends SavedData {
                     if (state.isAir()) continue;
                     if (!state.getFluidState().isEmpty()) continue;
                     if (state.getDestroySpeed(level, scanPos) < 0) continue;
+                    // Fuel rods are consumed by the meltdown. Throwing them clear used to reseed
+                    // the explosion wherever they landed.
+                    if (state.getBlock() instanceof UraniumFuelRod) continue;
 
-                    BlockState launchState = rng.nextFloat() < 0.25f ? Blocks.LAVA.defaultBlockState() : state;
-                    FallingBlockEntity flung = FallingBlockEntity.fall(level, scanPos, launchState);
+                    FallingBlockEntity flung = FallingBlockEntity.fall(level, scanPos, state);
 
                     Vec3 dir = new Vec3(dx + 0.001, Math.max(dy, 0) + 0.6, dz + 0.001).normalize();
                     double speed = 0.6 + rng.nextDouble() * 1.4;
@@ -283,6 +302,9 @@ public class RadiationManager extends SavedData {
                 }
             }
         }
+
+        // The rod itself melts down into a single lava block — the only lava a meltdown creates
+        level.setBlock(epicenter, Blocks.LAVA.defaultBlockState(), 3);
 
         // Explosion power: base 7, +1.5 per nearby rod, capped at 20
         float power = Math.min(20f, 7f + nearbyRods * 1.5f);
@@ -296,6 +318,11 @@ public class RadiationManager extends SavedData {
             if (!rodPos.equals(epicenter) && rodPos.distSqr(epicenter) <= 25) // 5-block radius
                 addHeat(rodPos, MELTDOWN_TEMP * 1.2f);
         }
+    }
+
+    static boolean isWaterlogged(BlockState state) {
+        return state.hasProperty(BlockStateProperties.WATERLOGGED)
+                && state.getValue(BlockStateProperties.WATERLOGGED);
     }
 
     private static boolean isHeatNode(Block b) {
@@ -361,6 +388,10 @@ public class RadiationManager extends SavedData {
             return;
         }
 
+        // Water slows the particle down (moderation), making the next rod it hits absorb it properly
+        if (!p.moderated && level.getFluidState(BlockPos.containing(next)).getType() == Fluids.WATER)
+            p.moderated = true;
+
         if (!isPointInSolid(level, next)) { p.pos = next; return; }
 
         BlockPos hitBlock = BlockPos.containing(next);
@@ -373,7 +404,7 @@ public class RadiationManager extends SavedData {
         if (rods.contains(hitBlock) && !hitBlock.equals(p.source)
                 && !hitBlock.equals(p.source.above()) && !hitBlock.equals(p.source.below())
                 && !(level.getBlockState(hitBlock).getBlock() instanceof HeatPipeBlock)) {
-            addHeat(hitBlock, p.energy * 5f);
+            addHeat(hitBlock, p.energy * 5f * (p.moderated ? MODERATED_HEAT : UNMODERATED_HEAT));
         }
 
         double vx = p.vel.x, vy = p.vel.y, vz = p.vel.z;
