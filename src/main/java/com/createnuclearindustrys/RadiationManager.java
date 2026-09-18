@@ -176,13 +176,14 @@ public class RadiationManager extends SavedData {
         }
         if (!melted.isEmpty()) setDirty();
 
-        // Boilers drain heat while converting water to steam (no kinetic output).
+        // Boilers drain heat while converting water to steam (no kinetic output) — only while
+        // actually boiling, so a boiler whose steam has nowhere to go stops cooling the reactor
         for (Map.Entry<BlockPos, Float> entry : rodHeat.entrySet()) {
             if (!(level.getBlockState(entry.getKey()).getBlock() instanceof BoilerBlock)) continue;
             float heat = entry.getValue();
             if (heat < 100f) continue;
             if (!(level.getBlockEntity(entry.getKey()) instanceof BoilerBlockEntity bbe)
-                    || !bbe.hasWater()) continue;
+                    || !bbe.isBoiling()) continue;
             entry.setValue(Math.max(0f, heat - heat * 0.005f));
         }
 

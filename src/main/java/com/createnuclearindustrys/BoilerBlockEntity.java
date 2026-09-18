@@ -20,6 +20,8 @@ public class BoilerBlockEntity extends BlockEntity {
     float heat = 0f;
     // Fraction of a mB of water carried between ticks so the boil rate follows heat exactly
     private float waterOwed = 0f;
+    // Whether water actually boiled this tick; the heat network only cools a boiler that is boiling
+    private boolean boiling = false;
 
     private final FluidTank waterTank = new FluidTank(WATER_CAPACITY, stack -> stack.is(Fluids.WATER));
     private final FluidTank steamTank = new FluidTank(STEAM_CAPACITY);
@@ -69,12 +71,19 @@ public class BoilerBlockEntity extends BlockEntity {
     }
 
     public void tick() {
+        boiling = false;
         if (level == null || level.isClientSide() || heat < MIN_HEAT || waterTank.isEmpty()) return;
 
         // Scale linearly: 1 mB water/tick per 100°C, fractions carried over (287°C averages 2.87 mB/tick)
         waterOwed += heat / 100f;
-        int waterPerTick = (int) waterOwed;
-        if (waterPerTick == 0) return;
+        // Only boil what the steam tank has room for — a backed-up boiler stops instead of
+        // destroying the water whose steam wouldn't fit
+        int room = (STEAM_CAPACITY - steamTank.getFluidAmount()) / 10;
+        int waterPerTick = Math.min((int) waterOwed, room);
+        if (waterPerTick <= 0) {
+            waterOwed = Math.min(waterOwed, 1f);
+            return;
+        }
         waterOwed -= waterPerTick;
         FluidStack consumed = waterTank.drain(waterPerTick, IFluidHandler.FluidAction.EXECUTE);
         if (!consumed.isEmpty()) {
@@ -82,6 +91,7 @@ public class BoilerBlockEntity extends BlockEntity {
                 new FluidStack(CreateNuclearIndustrys.STEAM_STILL.get(), consumed.getAmount() * 10),
                 IFluidHandler.FluidAction.EXECUTE
             );
+            boiling = true;
             setChanged();
         }
     }
@@ -93,6 +103,8 @@ public class BoilerBlockEntity extends BlockEntity {
     }
 
     public boolean hasWater() { return !waterTank.isEmpty(); }
+
+    public boolean isBoiling() { return boiling; }
 
     public IFluidHandler getFluidHandler() { return combinedHandler; }
 

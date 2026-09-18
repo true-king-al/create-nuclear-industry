@@ -196,9 +196,10 @@ public class SteamTurbineBlockEntity extends GeneratingKineticBlockEntity {
                 active = tag.getBoolean("active");
                 lastCapacity = calculateAddedStressCapacity();
             }
-        } else if (!clientPacket && getSpeed() != 0 && !active) {
-            // Saved by an older version without the flow history, while running: assume it still
-            // is, with a token flow the real steam replaces within the window
+        } else if (!clientPacket && getSpeed() != 0 && !hasSource() && !active) {
+            // Saved by an older version without the flow history, while generating (spinning with
+            // no other source driving it): assume it still is, with a token flow the real steam
+            // replaces within the window
             java.util.Arrays.fill(flowHistory, 1);
             flowSum = FLOW_WINDOW;
             steamFlow = 1f;
