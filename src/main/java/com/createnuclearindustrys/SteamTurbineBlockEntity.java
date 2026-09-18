@@ -116,10 +116,15 @@ public class SteamTurbineBlockEntity extends GeneratingKineticBlockEntity {
         super.tick();
         if (level == null || level.isClientSide()) return;
 
-        int available = Math.min(MAX_THROUGHPUT, steamInputTank.getFluidAmount());
+        // Only take in as much steam as the exhaust has room to pass on, so a slow or missing
+        // exhaust pipe backs the turbine up instead of silently destroying steam
+        int exhaustRoom = TANK_CAPACITY - steamOutputTank.getFluidAmount();
+        int fitsExhaust = (int) (exhaustRoom / (1f - CONSUMPTION_RATIO));
+        if (fitsExhaust < 10) fitsExhaust = 0; // exhaust effectively blocked: stop, don't nibble
+        int available = Math.min(Math.min(MAX_THROUGHPUT, fitsExhaust), steamInputTank.getFluidAmount());
         int processed = 0;
 
-        if (available > 0 && steamOutputTank.getFluidAmount() < TANK_CAPACITY) {
+        if (available > 0) {
             int passThrough = (int) (available * (1f - CONSUMPTION_RATIO));
             processed = available;
 
@@ -167,6 +172,12 @@ public class SteamTurbineBlockEntity extends GeneratingKineticBlockEntity {
         super.write(tag, registries, clientPacket);
         tag.put("steamIn",  steamInputTank.writeToNBT(registries, new CompoundTag()));
         tag.put("steamOut", steamOutputTank.writeToNBT(registries, new CompoundTag()));
+        // Saved so a reloaded turbine keeps running at the speed the network was saved with.
+        // Without this it loads reporting 0 RPM, Create tears the network down and rebuilds
+        // it a moment later, and that rebuild can break blocks (e.g. around a speed controller).
+        tag.putIntArray("flowHistory", flowHistory);
+        tag.putInt("flowIndex", flowIndex);
+        tag.putBoolean("active", active);
     }
 
     @Override
@@ -174,5 +185,25 @@ public class SteamTurbineBlockEntity extends GeneratingKineticBlockEntity {
         super.read(tag, registries, clientPacket);
         if (tag.contains("steamIn"))  steamInputTank.readFromNBT(registries,  tag.getCompound("steamIn"));
         if (tag.contains("steamOut")) steamOutputTank.readFromNBT(registries, tag.getCompound("steamOut"));
+        if (!clientPacket && tag.contains("flowHistory")) {
+            int[] saved = tag.getIntArray("flowHistory");
+            if (saved.length == FLOW_WINDOW) {
+                System.arraycopy(saved, 0, flowHistory, 0, FLOW_WINDOW);
+                flowIndex = Math.floorMod(tag.getInt("flowIndex"), FLOW_WINDOW);
+                flowSum = 0;
+                for (int v : flowHistory) flowSum += v;
+                steamFlow = (float) flowSum / FLOW_WINDOW;
+                active = tag.getBoolean("active");
+                lastCapacity = calculateAddedStressCapacity();
+            }
+        } else if (!clientPacket && getSpeed() != 0 && !active) {
+            // Saved by an older version without the flow history, while running: assume it still
+            // is, with a token flow the real steam replaces within the window
+            java.util.Arrays.fill(flowHistory, 1);
+            flowSum = FLOW_WINDOW;
+            steamFlow = 1f;
+            active = true;
+            lastCapacity = calculateAddedStressCapacity();
+        }
     }
 }
